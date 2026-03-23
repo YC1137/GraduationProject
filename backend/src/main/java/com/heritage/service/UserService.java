@@ -34,14 +34,14 @@ public class UserService {
         if (userRepository.existsByUsername(username)) {
             throw new RuntimeException("用户名已存在");
         }
-        if (email != null && userRepository.existsByEmail(email)) {
+        if (email != null && !email.isBlank() && userRepository.existsByEmail(email)) {
             throw new RuntimeException("邮箱已被注册");
         }
         
         User user = new User();
         user.setUsername(username);
         user.setPassword(password); // 实际项目应该加密
-        user.setEmail(email);
+        user.setEmail((email != null && !email.isBlank()) ? email : null);
         user.setAvatar(String.format("https://ui-avatars.com/api/?name=%s&background=c8302b&color=fff", username));
         user.setRole("USER"); // 默认角色为普通用户
         

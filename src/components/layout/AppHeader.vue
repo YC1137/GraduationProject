@@ -33,6 +33,10 @@
                 <el-icon><QuestionFilled /></el-icon>
                 <span>知识测验</span>
               </router-link>
+              <router-link to="/ai-chat" class="nav-item">
+                <el-icon><ChatDotRound /></el-icon>
+                <span>遗遗问答</span>
+              </router-link>
             </nav>
             
             <!-- 搜索框 -->
@@ -124,6 +128,10 @@
               <el-icon><QuestionFilled /></el-icon>
               <span>知识测验</span>
             </router-link>
+            <router-link to="/ai-chat" class="nav-item" @click="closeMobileMenu">
+              <el-icon><ChatDotRound /></el-icon>
+              <span>遗遗问答</span>
+            </router-link>
           </nav>
           
           <!-- 搜索框 -->
@@ -200,7 +208,8 @@
     Menu,
     QuestionFilled,
     Expand,
-    Fold
+    Fold,
+    ChatDotRound
   } from '@element-plus/icons-vue'
   import { useAuthStore } from '@/stores/auth'
   import LoginDialog from '@/components/auth/LoginDialog.vue'
@@ -303,10 +312,12 @@
   
   onMounted(() => {
     window.addEventListener('resize', handleResize)
+    window.addEventListener('show-login', showLogin)
   })
   
   onUnmounted(() => {
     window.removeEventListener('resize', handleResize)
+    window.removeEventListener('show-login', showLogin)
   })
   </script>
   

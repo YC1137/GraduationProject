@@ -38,6 +38,13 @@ const routes = [
         name: 'Comments',
         component: () => import('../views/Comments.vue'),
         meta: { title: '评论审核' }
+    },
+    {
+        path: '/ai-chat',
+        name: 'AiChat',
+        component: () => import('../views/AiChat.vue'),
+        meta: { title: 'AI智能问答' }
+        // 注意：登录拦截在页面内部处理（展示遮罩），不在路由守卫拦截
     }
 ]
 

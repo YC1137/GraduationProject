@@ -48,11 +48,13 @@ export const useAuthStore = defineStore('auth', () => {
     // 注册
     const register = async (userData) => {
         try {
-            await apiRegister(userData.username, userData.password, userData.email)
+            // 邮箱为空时传 null，避免后端把空字符串误判为重复邮箱
+            const email = userData.email?.trim() || null
+            await apiRegister(userData.username, userData.password, email)
             // 注册成功后自动登录
             return await login(userData)
         } catch (error) {
-            ElMessage.error(error.response?.data?.message || '注册失败')
+            // 错误消息已在 request.js 中统一弹出，这里不再重复显示
             return false
         }
     }
