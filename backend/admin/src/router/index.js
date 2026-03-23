@@ -1,0 +1,64 @@
+import { createRouter, createWebHistory } from 'vue-router'
+import Login from '../views/Login.vue'
+import Layout from '../views/Layout.vue'
+import Dashboard from '../views/Dashboard.vue'
+import UserManagement from '../views/UserManagement.vue'
+import HeritageManagement from '../views/HeritageManagement.vue'
+import CommentManagement from '../views/CommentManagement.vue'
+import QuizManagement from '../views/QuizManagement.vue'
+
+const routes = [
+  {
+    path: '/login',
+    name: 'Login',
+    component: Login
+  },
+  {
+    path: '/',
+    component: Layout,
+    redirect: '/dashboard',
+    children: [
+      {
+        path: 'dashboard',
+        name: 'Dashboard',
+        component: Dashboard
+      },
+      {
+        path: 'users',
+        name: 'UserManagement',
+        component: UserManagement
+      },
+      {
+        path: 'heritage',
+        name: 'HeritageManagement',
+        component: HeritageManagement
+      },
+      {
+        path: 'comments',
+        name: 'CommentManagement',
+        component: CommentManagement
+      },
+      {
+        path: 'quiz',
+        name: 'QuizManagement',
+        component: QuizManagement
+      }
+    ]
+  }
+]
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes
+})
+
+router.beforeEach((to, from, next) => {
+  const token = localStorage.getItem('adminToken')
+  if (to.path !== '/login' && !token) {
+    next('/login')
+  } else {
+    next()
+  }
+})
+
+export default router
