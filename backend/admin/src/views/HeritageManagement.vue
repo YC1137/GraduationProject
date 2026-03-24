@@ -85,10 +85,41 @@
           <el-input v-model="form.detailDescription" type="textarea" :rows="5" />
         </el-form-item>
         <el-form-item label="缩略图" prop="thumbnail">
-          <el-input v-model="form.thumbnail" />
+          <div class="image-upload-field">
+            <el-input v-model="form.thumbnail" placeholder="粘贴图片URL，或点击右侧上传" class="url-input" />
+            <el-upload
+              :show-file-list="false"
+              :http-request="(opt) => uploadImage(opt, 'thumbnail')"
+              accept="image/*"
+              class="upload-btn"
+            >
+              <el-button type="primary" :loading="uploadingThumbnail">上传图片</el-button>
+            </el-upload>
+          </div>
+          <div v-if="form.thumbnail" class="img-preview">
+            <img :src="form.thumbnail" alt="缩略图预览" />
+          </div>
         </el-form-item>
         <el-form-item label="图片" prop="images">
-          <el-input v-model="form.images" type="textarea" :rows="3" />
+          <div class="image-upload-field">
+            <el-input v-model="form.images" type="textarea" :rows="2"
+              placeholder='粘贴URL或JSON数组，如 ["url1","url2"]，也可点击上传' class="url-input" />
+            <el-upload
+              :show-file-list="false"
+              :http-request="(opt) => uploadImage(opt, 'images')"
+              accept="image/*"
+              multiple
+              class="upload-btn"
+            >
+              <el-button type="primary" :loading="uploadingImages">上传图片</el-button>
+            </el-upload>
+          </div>
+          <div v-if="parsedImages.length" class="imgs-preview">
+            <div v-for="(url, idx) in parsedImages" :key="idx" class="img-preview-item">
+              <img :src="url" :alt="'图片' + (idx+1)" />
+              <el-button type="danger" size="small" circle @click="removeImage(idx)">×</el-button>
+            </div>
+          </div>
         </el-form-item>
         <el-form-item label="视频" prop="video">
           <el-input v-model="form.video" />
@@ -109,9 +140,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import axios from 'axios'
+
+const UPLOAD_URL = 'http://localhost:8080/api/admin/upload'
 
 const heritages = ref([])
 const loading = ref(false)
@@ -119,6 +152,9 @@ const dialogVisible = ref(false)
 const dialogTitle = ref('')
 const formRef = ref(null)
 const selectedRows = ref([])
+const uploadingThumbnail = ref(false)
+const uploadingImages = ref(false)
+
 const form = ref({
   id: null,
   name: '',
@@ -134,6 +170,64 @@ const form = ref({
   audio: '',
   timeline: ''
 })
+
+// 解析 images 字段为数组（支持 JSON 数组、数组对象、或单个 URL 字符串）
+const parsedImages = computed(() => {
+  const val = form.value.images
+  if (!val) return []
+  // 已经是数组（后端直接返回 List）
+  if (Array.isArray(val)) return val.filter(Boolean)
+  // 字符串：尝试 JSON 解析
+  if (typeof val === 'string') {
+    try {
+      const parsed = JSON.parse(val)
+      if (Array.isArray(parsed)) return parsed.filter(Boolean)
+    } catch (_) {}
+    return val.trim() ? [val.trim()] : []
+  }
+  return []
+})
+
+// 删除某张图
+const removeImage = (idx) => {
+  const arr = [...parsedImages.value]
+  arr.splice(idx, 1)
+  form.value.images = arr.length ? JSON.stringify(arr) : ''
+}
+
+// 通用上传函数
+const uploadImage = async (options, target) => {
+  const file = options.file
+  const fd = new FormData()
+  fd.append('file', file)
+
+  if (target === 'thumbnail') uploadingThumbnail.value = true
+  else uploadingImages.value = true
+
+  try {
+    const res = await axios.post(UPLOAD_URL, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    if (res.data.code === 200) {
+      const url = res.data.data
+      if (target === 'thumbnail') {
+        form.value.thumbnail = url
+      } else {
+        // 追加到 images 数组
+        const arr = [...parsedImages.value, url]
+        form.value.images = JSON.stringify(arr)
+      }
+      ElMessage.success('图片上传成功')
+    } else {
+      ElMessage.error(res.data.message || '上传失败')
+    }
+  } catch (e) {
+    ElMessage.error('上传失败：' + (e.message || '网络错误'))
+  } finally {
+    if (target === 'thumbnail') uploadingThumbnail.value = false
+    else uploadingImages.value = false
+  }
+}
 
 const rules = {
   name: [{ required: true, message: '请输入项目名称', trigger: 'blur' }],
@@ -179,19 +273,33 @@ const handleAdd = () => {
 
 const handleEdit = (row) => {
   dialogTitle.value = '编辑非遗项目'
-  form.value = { ...row }
+  const data = { ...row }
+  // 后端返回的 images 可能是数组，统一转成 JSON 字符串
+  if (Array.isArray(data.images)) {
+    data.images = JSON.stringify(data.images)
+  }
+  form.value = data
   dialogVisible.value = true
 }
 
 const confirmSave = async () => {
   try {
     await formRef.value.validate()
-    
+
+    // 确保数组类型字段序列化为 JSON 字符串再提交
+    const payload = { ...form.value }
+    if (Array.isArray(payload.images)) {
+      payload.images = JSON.stringify(payload.images)
+    }
+    if (Array.isArray(payload.timeline)) {
+      payload.timeline = JSON.stringify(payload.timeline)
+    }
+
     let response
-    if (form.value.id) {
-      response = await axios.put(`http://localhost:8080/api/admin/heritage/${form.value.id}`, form.value)
+    if (payload.id) {
+      response = await axios.put(`http://localhost:8080/api/admin/heritage/${payload.id}`, payload)
     } else {
-      response = await axios.post('http://localhost:8080/api/admin/heritage', form.value)
+      response = await axios.post('http://localhost:8080/api/admin/heritage', payload)
     }
     
     if (response.data.code === 200) {
@@ -328,10 +436,10 @@ const handleToggleEnabled = (row) => {
   ).then(async () => {
     loading.value = true
     try {
-      const response = await axios.put(`http://localhost:8080/api/admin/heritage/${row.id}`, {
-        ...row,
-        enabled: newEnabled
-      })
+      const payload = { ...row, enabled: newEnabled }
+      if (Array.isArray(payload.images))   payload.images   = JSON.stringify(payload.images)
+      if (Array.isArray(payload.timeline)) payload.timeline = JSON.stringify(payload.timeline)
+      const response = await axios.put(`http://localhost:8080/api/admin/heritage/${row.id}`, payload)
       
       if (response.data.code === 200) {
         ElMessage.success(`${newEnabled ? '启用' : '禁用'}成功`)
@@ -391,5 +499,58 @@ onMounted(() => {
 .el-card__body {
   flex: 1;
   overflow: auto;
+}
+
+/* 图片上传字段 */
+.image-upload-field {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  width: 100%;
+  .url-input {
+    flex: 1;
+  }
+  .upload-btn {
+    flex-shrink: 0;
+  }
+}
+
+.img-preview {
+  margin-top: 8px;
+  img {
+    max-width: 120px;
+    max-height: 90px;
+    border: 1px solid #dcdfe6;
+    border-radius: 4px;
+    object-fit: cover;
+  }
+}
+
+.imgs-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+  .img-preview-item {
+    position: relative;
+    img {
+      width: 80px;
+      height: 60px;
+      border: 1px solid #dcdfe6;
+      border-radius: 4px;
+      object-fit: cover;
+      display: block;
+    }
+    .el-button {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      width: 18px;
+      height: 18px;
+      font-size: 12px;
+      padding: 0;
+      line-height: 1;
+    }
+  }
 }
 </style>

@@ -1,7 +1,7 @@
 // 用户认证状态管理
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { login as apiLogin, register as apiRegister } from '../api/user'
+import { login as apiLogin, register as apiRegister, uploadAvatar as apiUploadAvatar } from '../api/user'
 import { ElMessage } from 'element-plus'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -68,6 +68,22 @@ export const useAuthStore = defineStore('auth', () => {
         ElMessage.success('已退出登录')
     }
 
+    // 更新头像
+    const updateAvatar = async (file) => {
+        const userId = currentUser.value?.userId
+        if (!userId) return false
+        try {
+            const res = await apiUploadAvatar(userId, file)
+            currentUser.value.avatar = res.avatar
+            localStorage.setItem('currentUser', JSON.stringify(currentUser.value))
+            ElMessage.success('头像更新成功')
+            return true
+        } catch (e) {
+            ElMessage.error('头像上传失败')
+            return false
+        }
+    }
+
     // 初始化
     initAuth()
 
@@ -76,6 +92,7 @@ export const useAuthStore = defineStore('auth', () => {
         currentUser,
         login,
         register,
-        logout
+        logout,
+        updateAvatar
     }
 })

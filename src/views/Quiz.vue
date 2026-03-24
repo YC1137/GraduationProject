@@ -240,20 +240,132 @@
                   <div class="wrong-header">
                     <span class="wrong-number">第 {{ item.index + 1 }} 题</span>
                     <el-tag type="danger" size="small">答错</el-tag>
+                    <el-button
+                      size="small"
+                      class="ai-analyze-btn"
+                      :loading="aiAnalysis[item.index]?.loading"
+                      @click="askAI(item)"
+                    >
+                      <el-icon v-if="!aiAnalysis[item.index]?.loading"><ChatDotRound /></el-icon>
+                      {{ aiAnalysis[item.index]?.loading ? '遗遗思考中...' : '问遗遗' }}
+                    </el-button>
                   </div>
                   <p class="wrong-question">{{ item.question.question }}</p>
                   <div class="wrong-answer">
                     <span class="answer-label">你的答案：</span>
                     <span class="answer-value wrong">
-                      {{ getOptionPrefix(item.userAnswer) }}. {{ item.question.options[item.userAnswer] }}
+                      {{ item.question.options[item.userAnswer] }}
                     </span>
                   </div>
                   <div class="correct-answer">
                     <span class="answer-label">正确答案：</span>
                     <span class="answer-value correct">
-                      {{ getOptionPrefix(item.question.answer) }}. {{ item.question.options[item.question.answer] }}
+                      {{ item.question.options[item.question.answer] }}
                     </span>
                   </div>
+                  <!-- AI 解析 + 追问 -->
+                  <transition name="ai-slide">
+                    <div class="ai-analysis" v-if="aiAnalysis[item.index]?.content || aiAnalysis[item.index]?.loading">
+                      <!-- 等待动画 -->
+                      <div class="ai-thinking" v-if="aiAnalysis[item.index]?.loading">
+                        <div class="thinking-avatar">
+                          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                            <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
+                          </svg>
+                        </div>
+                        <div class="thinking-dots">
+                          <span></span><span></span><span></span>
+                        </div>
+                        <span class="thinking-text">遗遗思考中</span>
+                      </div>
+
+                      <!-- 解析内容 -->
+                      <template v-if="aiAnalysis[item.index]?.content">
+                        <div class="ai-analysis-header">
+                          <div class="ai-avatar">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                              <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
+                            </svg>
+                          </div>
+                          <span>遗遗解析</span>
+                        </div>
+                        <p class="ai-analysis-content">{{ aiAnalysis[item.index].content }}</p>
+
+                        <!-- 追问对话区 -->
+                        <div class="ai-followup">
+                          <!-- 追问历史 -->
+                          <div class="followup-history" v-if="aiFollowup[item.index]?.messages?.length">
+                            <div
+                              v-for="(msg, mi) in aiFollowup[item.index].messages"
+                              :key="mi"
+                              class="followup-bubble"
+                              :class="msg.role === 'user' ? 'bubble-user' : 'bubble-bot'"
+                            >
+                              <div class="bubble-avatar" v-if="msg.role === 'assistant'">
+                                <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
+                                  <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
+                                </svg>
+                              </div>
+                              <div class="bubble-content" :style="msg.role === 'user' ? 'text-align: right' : ''">{{ msg.content }}</div>
+                              <div class="bubble-user-icon" v-if="msg.role === 'user'">
+                                <el-avatar :src="authStore.currentUser?.avatar" :size="26" />
+                              </div>
+                            </div>
+                            <!-- 追问等待动画 -->
+                            <div class="followup-bubble bubble-bot" v-if="aiFollowup[item.index]?.loading">
+                              <div class="bubble-avatar">
+                                <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
+                                  <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
+                                </svg>
+                              </div>
+                              <div class="bubble-content bubble-loading">
+                                <span></span><span></span><span></span>
+                              </div>
+                            </div>
+                          </div>
+                          <!-- 没有追问历史但正在等待 -->
+                          <div class="followup-history" v-else-if="aiFollowup[item.index]?.loading">
+                            <div class="followup-bubble bubble-bot">
+                              <div class="bubble-avatar">
+                                <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
+                                  <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
+                                </svg>
+                              </div>
+                              <div class="bubble-content bubble-loading">
+                                <span></span><span></span><span></span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <!-- 输入框 -->
+                          <div class="followup-input-row">
+                            <el-input
+                              v-model="aiFollowup[item.index].input"
+                              placeholder="还有疑问？继续问遗遗～"
+                              :disabled="aiFollowup[item.index]?.loading"
+                              @keyup.enter="sendFollowup(item)"
+                              class="followup-input"
+                            >
+                              <template #prefix>
+                                <el-icon style="color:#bbb"><ChatDotRound /></el-icon>
+                              </template>
+                            </el-input>
+                            <button
+                              class="followup-send-btn"
+                              :class="{ loading: aiFollowup[item.index]?.loading }"
+                              :disabled="!aiFollowup[item.index]?.input?.trim() || aiFollowup[item.index]?.loading"
+                              @click="sendFollowup(item)"
+                            >
+                              <svg v-if="!aiFollowup[item.index]?.loading" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                              </svg>
+                              <span v-else class="btn-dots"><i></i><i></i><i></i></span>
+                            </button>
+                          </div>
+                        </div>
+                      </template>
+                    </div>
+                  </transition>
                 </div>
               </div>
             </div>
@@ -293,8 +405,83 @@ import {
   InfoFilled,
   RefreshRight,
   HomeFilled,
-  Timer
+  Timer,
+  ChatDotRound
 } from '@element-plus/icons-vue'
+import { sendChatMessage } from '@/api/ai'
+
+// ===== 错题 AI 解析 =====
+// key: item.index，value: { loading: bool, content: string }
+const aiAnalysis = ref({})
+
+// 追问对话：key: item.index，value: { input: string, loading: bool, messages: [{role, content}] }
+const aiFollowup = ref({})
+
+// 确保某道题的追问对象已初始化
+const ensureFollowup = (idx) => {
+  if (!aiFollowup.value[idx]) {
+    aiFollowup.value[idx] = { input: '', loading: false, messages: [] }
+  }
+}
+
+const sendFollowup = async (item) => {
+  const idx = item.index
+  ensureFollowup(idx)
+  const text = aiFollowup.value[idx].input.trim()
+  if (!text || aiFollowup.value[idx].loading) return
+
+  aiFollowup.value[idx].messages.push({ role: 'user', content: text })
+  aiFollowup.value[idx].input = ''
+  aiFollowup.value[idx].loading = true
+
+  // 构建历史：初始解析作为第一条 assistant 消息
+  const q = item.question.question
+  const opts = item.question.options.join('、')
+  const correct = item.question.options[item.question.answer]
+  const mine = item.question.options[item.userAnswer]
+  const initPrompt = `这是一道关于中国非物质文化遗产的测验题，请帮我解析一下：\n题目：${q}\n选项：${opts}\n正确答案：${correct}\n我的答案（错误）：${mine}\n\n请用活泼友好的语气简要解释为什么正确答案是"${correct}"，以及这道题考查了哪方面的非遗知识，100字以内。`
+  const history = [
+    { role: 'user', content: initPrompt },
+    { role: 'assistant', content: aiAnalysis.value[idx]?.content || '' },
+    ...aiFollowup.value[idx].messages.slice(0, -1)
+  ]
+
+  try {
+    const reply = await sendChatMessage(text, history)
+    aiFollowup.value[idx].messages.push({ role: 'assistant', content: reply })
+  } catch (e) {
+    aiFollowup.value[idx].messages.push({ role: 'assistant', content: '哎呀，出错了，请稍后再试～' })
+  } finally {
+    aiFollowup.value[idx].loading = false
+  }
+}
+
+const askAI = async (item) => {
+  const idx = item.index
+  if (aiAnalysis.value[idx]?.content) return   // 已有结果不重复请求
+  aiAnalysis.value[idx] = { loading: true, content: '' }
+  ensureFollowup(idx)
+
+  const q = item.question.question
+  const opts = item.question.options.join('、')
+  const correct = item.question.options[item.question.answer]
+  const mine = item.question.options[item.userAnswer]
+
+  const prompt = `这是一道关于中国非物质文化遗产的测验题，请帮我解析一下：
+题目：${q}
+选项：${opts}
+正确答案：${correct}
+我的答案（错误）：${mine}
+
+请用活泼友好的语气简要解释为什么正确答案是"${correct}"，以及这道题考查了哪方面的非遗知识，100字以内。`
+
+  try {
+    const reply = await sendChatMessage(prompt, [])
+    aiAnalysis.value[idx] = { loading: false, content: reply }
+  } catch (e) {
+    aiAnalysis.value[idx] = { loading: false, content: '哎呀，解析失败了，请稍后再试～' }
+  }
+}
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -1141,8 +1328,256 @@ const loadingRankings = ref(false)
   &.rank-third { background: #f6d9c2; color: #8a3b12; }
 }
 
+
+// 问遗遗按钮
+.ai-analyze-btn {
+  margin-left: auto;
+  border-radius: 20px;
+  font-size: 12px;
+  height: 28px;
+  padding: 0 14px;
+  color: var(--primary-color);
+  border-color: rgba(200,48,43,.35);
+  background: rgba(200,48,43,.04);
+  font-weight: 600;
+  transition: all 0.2s;
+
+  &:hover {
+    background: rgba(200,48,43,.1);
+    border-color: var(--primary-color);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(200,48,43,.15);
+  }
+}
+
+// 入场动画
+.ai-slide-enter-active { transition: all 0.35s cubic-bezier(0.34,1.56,0.64,1); }
+.ai-slide-enter-from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+
+// AI 解析块
+.ai-analysis {
+  margin-top: 16px;
+  background: linear-gradient(145deg, #fffaf4, #fff6ef);
+  border: 1px solid rgba(200,48,43,.18);
+  border-radius: 14px;
+  padding: 16px 18px 14px;
+  box-shadow: 0 4px 16px rgba(200,48,43,.06);
+}
+
+// 等待动画容器
+.ai-thinking {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+  color: var(--primary-color);
+  font-size: 13px;
+  font-weight: 600;
+
+  .thinking-avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: rgba(200,48,43,.1);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--primary-color);
+    flex-shrink: 0;
+  }
+
+  .thinking-text { color: #999; font-weight: 400; font-size: 12px; }
+}
+
+// 三个跳动点（全局等待 & 气泡等待复用）
+.thinking-dots, .bubble-loading {
+  display: flex; align-items: center; gap: 4px;
+  span, i {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--primary-color);
+    display: inline-block;
+    animation: dotBounce 1.2s infinite ease-in-out;
+    &:nth-child(2) { animation-delay: 0.2s; }
+    &:nth-child(3) { animation-delay: 0.4s; }
+  }
+}
+
+@keyframes dotBounce {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.5; }
+  40%           { transform: scale(1.1); opacity: 1; }
+}
+
+// 解析头部
+.ai-analysis-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary-color);
+  margin-bottom: 10px;
+
+  .ai-avatar {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: rgba(200,48,43,.12);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--primary-color);
+    flex-shrink: 0;
+  }
+}
+
+.ai-analysis-content {
+  font-size: 13.5px;
+  color: #3a3a3a;
+  line-height: 1.85;
+  margin: 0 0 4px;
+  white-space: pre-wrap;
+}
+
+// 追问区
+.ai-followup {
+  margin-top: 14px;
+  border-top: 1px dashed rgba(200,48,43,.2);
+  padding-top: 12px;
+}
+
+.followup-history {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding-right: 2px;
+
+  &::-webkit-scrollbar { width: 4px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: rgba(200,48,43,.2); border-radius: 4px; }
+}
+
+// 气泡
+.followup-bubble {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  animation: bubbleIn 0.25s ease;
+}
+
+@keyframes bubbleIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.bubble-avatar {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: rgba(200,48,43,.12);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--primary-color);
+  flex-shrink: 0;
+}
+
+.bubble-user-icon {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: #F5E6C8;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+
+  :deep(.el-avatar) {
+    background: #F5E6C8;
+  }
+}
+
+.bubble-content {
+  max-width: 85%;
+  padding: 8px 12px;
+  border-radius: 14px;
+  font-size: 13px;
+  line-height: 1.75;
+  white-space: pre-wrap;
+}
+
+.bubble-bot {
+  flex-direction: row;
+}
+
+.bubble-bot .bubble-content {
+  background: #fff;
+  border: 1px solid rgba(200,48,43,.15);
+  color: #333;
+  border-bottom-left-radius: 4px;
+}
+
+.bubble-user {
+  justify-content: flex-end;
+}
+
+.bubble-user .bubble-content {
+  background: linear-gradient(135deg, var(--primary-color), #d94c43);
+  color: #fff;
+  text-align: right;
+  border-bottom-right-radius: 4px;
+  box-shadow: 0 4px 12px rgba(200,48,43,.2);
+}
+
+// 输入行
+.followup-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+
+  .followup-input {
+    flex: 1;
+    :deep(.el-input__wrapper) {
+      border-radius: 20px;
+      background: #fff;
+      box-shadow: none;
+      border: 1px solid #e0d5c8;
+      padding: 0 14px;
+      transition: all 0.2s;
+      &:hover { border-color: rgba(200,48,43,.4); }
+      &.is-focus { border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(200,48,43,.1); }
+    }
+    :deep(.el-input__inner) { font-size: 13px; height: 36px; }
+  }
+}
+
+.followup-send-btn {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, var(--primary-color), #d94c43);
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s;
+  box-shadow: 0 4px 10px rgba(200,48,43,.25);
+
+  &:hover:not(:disabled) {
+    transform: scale(1.08);
+    box-shadow: 0 6px 16px rgba(200,48,43,.35);
+  }
+
+  &:disabled {
+    background: #ddd;
+    box-shadow: none;
+    cursor: not-allowed;
+  }
+
+  &.loading { background: #ddd; cursor: not-allowed; }
+
+  .btn-dots {
+    display: flex; gap: 3px; align-items: center;
+    i {
+      width: 4px; height: 4px; border-radius: 50%;
+      background: #999; display: inline-block;
+      animation: dotBounce 1.2s infinite ease-in-out;
+      &:nth-child(2) { animation-delay: 0.2s; }
+      &:nth-child(3) { animation-delay: 0.4s; }
+    }
+  }
+}
+
 @media (max-width: 768px) {
-  .quiz-page { padding: 32px 0 72px; }
   .start-card, .start-rankings, .question-card { padding: 28px 22px; }
   .result-stats { grid-template-columns: repeat(2, 1fr); }
   .question-card .question-title { font-size: 1.2rem; }

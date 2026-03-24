@@ -31,6 +31,49 @@
       </el-carousel>
     </section>
 
+    <!-- 热门项目 + 公告栏 -->
+    <section class="featured-section container">
+      <div class="featured-layout">
+        <!-- 左侧：热门项目 -->
+        <div class="featured-main">
+          <h2 class="section-title">
+            <span>热门项目</span>
+            <div class="title-decoration"></div>
+          </h2>
+          <div class="heritage-grid">
+            <HeritageCard 
+              v-for="item in featuredItems" 
+              :key="item.id"
+              :heritage="item"
+            />
+          </div>
+          <div class="view-more">
+            <el-button type="primary" size="large" @click="goToCategory()">
+              查看更多
+              <el-icon class="el-icon--right"><DArrowRight /></el-icon>
+            </el-button>
+          </div>
+        </div>
+
+        <!-- 右侧：公告栏 -->
+        <div class="notice-board">
+          <h2 class="section-title">
+            <span>公告栏</span>
+            <div class="title-decoration"></div>
+          </h2>
+          <div class="notice-list">
+            <div class="notice-item" v-for="notice in notices" :key="notice.id">
+              <div class="notice-tag" :class="notice.type">{{ notice.tag }}</div>
+              <div class="notice-content">
+                <p class="notice-title">{{ notice.title }}</p>
+                <span class="notice-date">{{ notice.date }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- 分类入口 -->
     <section class="category-section container">
       <h2 class="section-title">
@@ -95,29 +138,6 @@
       </div>
     </section>
 
-    <!-- 热门项目 -->
-    <section class="featured-section container">
-      <h2 class="section-title">
-        <span>热门项目</span>
-        <div class="title-decoration"></div>
-      </h2>
-      
-      <div class="heritage-grid">
-        <HeritageCard 
-          v-for="item in featuredItems" 
-          :key="item.id"
-          :heritage="item"
-        />
-      </div>
-      
-      <div class="view-more">
-        <el-button type="primary" size="large" @click="goToCategory()">
-          查看更多
-          <el-icon class="el-icon--right"><DArrowRight /></el-icon>
-        </el-button>
-      </div>
-    </section>
-
     <!-- 平台特色 -->
     <section class="features-section ink-wash-bg">
       <div class="container">
@@ -137,6 +157,10 @@
         </div>
       </div>
     </section>
+
+    <!-- 皮影装饰 -->
+    <img src="@/img/piying.png" class="piying-decoration piying-right" alt="" aria-hidden="true" />
+    <img src="@/img/piying.png" class="piying-decoration piying-left"  alt="" aria-hidden="true" />
   </div>
 </template>
 
@@ -179,6 +203,17 @@ const heritageStore = useHeritageStore()
 const searchKeyword = ref('')
 const activeTab = ref('category')
 const featuredItems = ref([])
+
+// 公告栏数据
+const notices = ref([
+  { id: 1, tag: '通知', type: 'info',    title: '平台正式上线，欢迎广大非遗爱好者注册体验！', date: '2025-03-20' },
+  { id: 2, tag: '活动', type: 'primary', title: '2025年非遗文化节线上知识竞答活动开始报名', date: '2025-03-18' },
+  { id: 3, tag: '更新', type: 'success', title: '新增50余项国家级非遗项目数据，内容持续扩充中', date: '2025-03-15' },
+  { id: 4, tag: '公告', type: 'warning', title: '关于非遗数字化保护成果展览征集工作的通知', date: '2025-03-10' },
+  { id: 5, tag: '活动', type: 'primary', title: '非遗传承人线上直播讲堂第三期即将开播', date: '2025-03-08' },
+  { id: 6, tag: '通知', type: 'info',    title: '平台数据库完成第二次整体更新，新增地域分类', date: '2025-03-01' },
+  { id: 7, tag: '公告', type: 'warning', title: '诚邀各地非遗传承人入驻平台，共建数字非遗库', date: '2025-02-25' },
+])
 
 // 轮播图数据（动态）
 const carouselItems = ref([])
@@ -453,11 +488,16 @@ const handleTabClick = () => {
 <style lang="scss" scoped>
 .home-page {
   min-height: 100vh;
+
 }
 
 // 轮播图区域
 .hero-section {
   margin-top: -80px;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 0 20px;
   
   :deep(.el-carousel) {
     .el-carousel__indicators {
@@ -681,16 +721,93 @@ const handleTabClick = () => {
   padding: 60px 0;
 }
 
+.featured-layout {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 36px;
+  align-items: start;
+}
+
+.featured-main {
+  min-width: 0;
+}
+
 .heritage-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 30px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 24px;
   margin-top: 30px;
 }
 
 .view-more {
   text-align: center;
-  margin-top: 50px;
+  margin-top: 40px;
+}
+
+// 公告栏
+.notice-board {
+  background: #fff;
+  border-radius: 16px;
+  padding: 28px 24px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid rgba(0,0,0,.06);
+  position: sticky;
+  top: 80px;
+}
+
+.notice-list {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.notice-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 0;
+  border-bottom: 1px dashed rgba(0,0,0,.08);
+  cursor: default;
+  transition: background .2s;
+
+  &:last-child { border-bottom: none; }
+  &:hover { background: rgba(192,57,43,.03); border-radius: 8px; padding-left: 6px; }
+}
+
+.notice-tag {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  margin-top: 2px;
+
+  &.info    { background: #e8f4fd; color: #2980b9; }
+  &.primary { background: #fdeaea; color: var(--primary-color); }
+  &.success { background: #eafaf1; color: #27ae60; }
+  &.warning { background: #fef9e7; color: #e67e22; }
+}
+
+.notice-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notice-title {
+  font-size: 13px;
+  color: var(--text-primary);
+  line-height: 1.6;
+  margin: 0 0 4px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.notice-date {
+  font-size: 11px;
+  color: var(--text-secondary);
 }
 
 // 平台特色
@@ -750,7 +867,8 @@ const handleTabClick = () => {
 // 响应式设计
 @media (max-width: 768px) {
   .hero-section {
-    margin-top: -60px; // 适配新的移动端导航栏高度
+    margin-top: -60px;
+    padding: 0 15px;
     
     :deep(.el-carousel) {
       height: 245px !important; // 350px * 0.7 = 245px
@@ -881,7 +999,15 @@ const handleTabClick = () => {
   
   // 热门项目
   .featured-section {
-    padding: 30px 0; // 减少内边距
+    padding: 30px 0;
+  }
+
+  .featured-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .notice-board {
+    position: static;
   }
   
   .heritage-grid {
@@ -974,5 +1100,34 @@ const handleTabClick = () => {
   .feature-title {
     font-size: 0.75rem;
   }
+}
+
+// 皮影装饰
+.piying-decoration {
+  position: fixed;
+  bottom: 0;
+  width: 160px;
+  height: auto;
+  opacity: 0.82;
+  pointer-events: none;
+  z-index: 10;
+  filter: drop-shadow(2px 4px 8px rgba(0,0,0,0.18));
+}
+
+.piying-right {
+  right: 24px;
+}
+
+.piying-left {
+  left: 24px;
+  transform: scaleX(-1);
+}
+
+@media (max-width: 768px) {
+  .piying-decoration {
+    width: 100px;
+  }
+  .piying-right { right: 12px; }
+  .piying-left  { left: 12px; }
 }
 </style>

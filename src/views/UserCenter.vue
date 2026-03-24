@@ -4,8 +4,24 @@
 
       <!-- 用户信息卡片 -->
       <div class="profile-card">
-        <div class="profile-avatar-wrap">
+        <div class="profile-avatar-wrap" @click="triggerAvatarUpload" title="点击更换头像">
           <el-avatar :src="authStore.currentUser?.avatar" :size="80" class="profile-avatar" />
+          <div class="avatar-overlay">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="#fff">
+              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+            </svg>
+            <span>更换头像</span>
+          </div>
+          <div class="avatar-uploading" v-if="avatarUploading">
+            <div class="upload-spinner"></div>
+          </div>
+          <input
+            ref="avatarInputRef"
+            type="file"
+            accept="image/*"
+            style="display:none"
+            @change="handleAvatarChange"
+          />
         </div>
         <div class="profile-info">
           <h2 class="profile-name">{{ authStore.currentUser?.username }}</h2>
@@ -131,6 +147,27 @@ const activeTab = ref('favorites')
 const loading = ref(false)
 const favoriteList = ref([])
 const likeList = ref([])
+
+// 头像上传
+const avatarInputRef = ref(null)
+const avatarUploading = ref(false)
+
+const triggerAvatarUpload = () => {
+  avatarInputRef.value?.click()
+}
+
+const handleAvatarChange = async (e) => {
+  const file = e.target.files?.[0]
+  if (!file) return
+  if (file.size > 5 * 1024 * 1024) {
+    ElMessage.warning('图片不能超过 5MB')
+    return
+  }
+  avatarUploading.value = true
+  await authStore.updateAvatar(file)
+  avatarUploading.value = false
+  e.target.value = ''
+}
 
 const currentList = computed(() =>
   activeTab.value === 'favorites' ? favoriteList.value : likeList.value
@@ -268,11 +305,60 @@ watch(() => route.query.tab, (tab) => {
 
 .profile-avatar-wrap {
   position: relative;
+  width: 80px; height: 80px;
+  cursor: pointer;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: #F5E6C8; // 米黄色背景
 
   .profile-avatar {
     border: 3px solid var(--primary-color);
     box-shadow: 0 4px 16px rgba(200, 48, 43, 0.25);
+    display: block;
+    background: #F5E6C8;
   }
+
+  // hover 蒙层
+  .avatar-overlay {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.45);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    opacity: 0;
+    transition: opacity 0.2s;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    pointer-events: none;
+  }
+
+  &:hover .avatar-overlay { opacity: 1; }
+
+  // 上传中遮罩
+  .avatar-uploading {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .upload-spinner {
+    width: 24px; height: 24px;
+    border: 3px solid rgba(255,255,255,.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
 }
 
 .profile-info {

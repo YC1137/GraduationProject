@@ -6,7 +6,10 @@
           <!-- Logo 和标题 -->
           <div class="logo-section" @click="goHome">
             <div class="logo-icon">非遗</div>
-            <h1 class="site-title">非遗数字化展示平台</h1>
+            <div class="logo-text">
+              <h1 class="site-title">非遗数字化展示平台</h1>
+              <p class="site-slogan">百闻不如遗见</p>
+            </div>
           </div>
           
           <!-- 移动端菜单按钮 -->
@@ -370,6 +373,12 @@
     flex-shrink: 0;
   }
   
+  .logo-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
   .site-title {
     font-size: 1.5rem;
     font-weight: 600;
@@ -377,6 +386,16 @@
     margin: 0;
     letter-spacing: 0.08em;
     white-space: nowrap;
+  }
+
+  .site-slogan {
+    font-size: 1rem;
+    color: #000;
+    margin: 0;
+    font-family: 'STLiti', '隶书', 'LiSu', serif;
+    width: 100%;
+    text-align: justify;
+    text-align-last: justify;
   }
   
   .desktop-actions {
@@ -509,12 +528,12 @@
     border-radius: 24px;
     border: 1.5px solid transparent;
     transition: all 0.25s;
-    
+
     &:hover, &.open {
       background: var(--bg-dark);
       border-color: var(--border-color);
     }
-    
+
     .username {
       font-size: 14px;
       font-weight: 500;
@@ -524,12 +543,16 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    
+
     .arrow-icon {
       color: var(--text-light);
       transition: transform 0.25s;
       flex-shrink: 0;
       &.rotated { transform: rotate(180deg); }
+    }
+
+    :deep(.el-avatar) {
+      background: #F5E6C8;
     }
   }
 
@@ -564,6 +587,7 @@
     .panel-avatar {
       border: 2px solid var(--primary-color);
       flex-shrink: 0;
+      background: #F5E6C8;
     }
 
     .panel-user-info {
@@ -728,17 +752,21 @@
       margin-bottom: 15px;
       padding-bottom: 15px;
       border-bottom: 1px solid var(--border-color);
-      
+
+      :deep(.el-avatar) {
+        background: #F5E6C8;
+      }
+
       .user-details {
         flex: 1;
-        
+
         .username {
           font-size: 16px;
           font-weight: 600;
           color: var(--text-primary);
           margin-bottom: 4px;
         }
-        
+
         .user-email {
           font-size: 12px;
           color: var(--text-secondary);

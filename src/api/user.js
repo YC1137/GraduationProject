@@ -15,6 +15,17 @@ export const register = async (username, password, email) => {
 }
 
 /**
+ * 上传并更新头像
+ */
+export const uploadAvatar = async (userId, file) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return request.post(`/user/avatar/${userId}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    })
+}
+
+/**
  * 切换收藏
  */
 export const toggleFavorite = async (heritageId, userId) => {
@@ -56,3 +67,4 @@ export const getUserLikes = async (userId) => {
 export const getUserLikesDetail = async (userId) => {
     return request.get(`/user/likes-detail/${userId}`)
 }
+

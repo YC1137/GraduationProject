@@ -7,13 +7,23 @@ import com.heritage.dto.RegisterRequest;
 import com.heritage.entity.User;
 import com.heritage.service.HeritageService;
 import com.heritage.service.UserService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -159,6 +169,48 @@ public class UserController {
             return ApiResponse.success(list);
         } catch (Exception e) {
             return ApiResponse.error("获取点赞列表失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 上传并更新用户头像
+     */
+    @PostMapping("/avatar/{userId}")
+    public ApiResponse<Map<String, Object>> uploadAvatar(
+            @PathVariable Long userId,
+            @RequestParam("file") MultipartFile file,
+            HttpServletRequest request) {
+        if (file.isEmpty()) return ApiResponse.error("文件不能为空");
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) return ApiResponse.error("只允许上传图片");
+
+        String uploadDirStr = System.getProperty("user.dir") + File.separator + "uploads";
+        Path uploadDir = Paths.get(uploadDirStr);
+        try {
+            if (!Files.exists(uploadDir)) Files.createDirectories(uploadDir);
+
+            String original = file.getOriginalFilename();
+            String ext = (original != null && original.contains("."))
+                    ? original.substring(original.lastIndexOf(".")) : ".jpg";
+            String fileName = "avatar_" + userId + "_" + UUID.randomUUID().toString().replace("-", "") + ext;
+            Path target = uploadDir.resolve(fileName);
+            try (InputStream in = file.getInputStream()) {
+                Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
+            }
+            String baseUrl = request.getScheme() + "://" + request.getServerName()
+                    + ":" + request.getServerPort() + request.getContextPath();
+            String avatarUrl = baseUrl + "/uploads/" + fileName;
+
+            User user = userService.updateAvatar(userId, avatarUrl);
+            Map<String, Object> data = new HashMap<>();
+            data.put("avatar", user.getAvatar());
+            return ApiResponse.success("头像更新成功", data);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return ApiResponse.error("文件保存失败: " + e.getMessage());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ApiResponse.error("上传异常: " + e.getMessage());
         }
     }
 }

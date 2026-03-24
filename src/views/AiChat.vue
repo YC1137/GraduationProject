@@ -100,6 +100,7 @@
 
               <!-- 对话列表 -->
               <template v-else>
+                <!-- AI消息：头像在左 -->
                 <div
                   v-for="(msg, index) in messages"
                   :key="index"
@@ -112,12 +113,12 @@
                     </svg>
                   </div>
 
-                  <div class="msg-body">
+                  <div class="msg-body" :style="msg.role === 'user' ? 'align-items: flex-end' : ''">
                     <div :class="['msg-bubble', msg.role]" v-html="formatMsg(msg.content)"></div>
                     <span class="msg-time">{{ msg.time }}</span>
                   </div>
 
-                  <!-- 用户头像 -->
+                  <!-- 用户头像（右边） -->
                   <div v-if="msg.role === 'user'" class="msg-avatar user-av">
                     <el-avatar :src="authStore.currentUser?.avatar" :size="36" />
                   </div>
@@ -686,8 +687,10 @@ const onKeydown = (e) => {
   align-items: flex-end;
   gap: 10px;
   margin-bottom: 20px;
+}
 
-  &.user { flex-direction: row-reverse; }
+.msg-row.user {
+  justify-content: flex-end;
 }
 
 /* 头像 */
@@ -699,13 +702,16 @@ const onKeydown = (e) => {
   display: flex;
   align-items: center;
   justify-content: center;
+}
 
-  &.ai-av { background: var(--primary-color); }
+.msg-avatar.ai-av {
+  background: var(--primary-color);
+}
 
-  &.user-av {
-    overflow: hidden;
-    :deep(.el-avatar) { width: 36px; height: 36px; }
-  }
+.msg-avatar.user-av {
+  overflow: hidden;
+  background: #F5E6C8;
+  :deep(.el-avatar) { width: 36px; height: 36px; background: #F5E6C8; }
 }
 
 /* 消息主体 */
@@ -713,8 +719,10 @@ const onKeydown = (e) => {
   max-width: 68%;
   display: flex;
   flex-direction: column;
+}
 
-  .msg-row.user & { align-items: flex-end; }
+.msg-row.user .msg-body {
+  align-items: flex-end;
 }
 
 /* 气泡 */

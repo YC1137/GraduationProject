@@ -82,6 +82,16 @@ public class UserService {
     }
     
     /**
+     * 更新用户头像
+     */
+    @Transactional
+    public User updateAvatar(Long id, String avatarUrl) {
+        User user = getUserById(id);
+        user.setAvatar(avatarUrl);
+        return userRepository.save(user);
+    }
+
+    /**
      * 更新用户角色
      */
     @Transactional
