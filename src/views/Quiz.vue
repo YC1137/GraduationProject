@@ -381,6 +381,23 @@
                 返回首页
               </el-button>
             </div>
+
+            <!-- 铸造藏品入口 -->
+            <div class="mint-entry" v-if="accuracy >= 60">
+              <div class="mint-entry-tip">
+                <span class="mint-tip-icon">🎴</span>
+                <div>
+                  <strong>恭喜！你的成绩符合铸造条件</strong>
+                  <p>正确率 {{ accuracy }}%，可铸造
+                    <span :class="mintRarityClass">{{ mintRarityLabel }}</span>
+                    级数字藏品
+                  </p>
+                </div>
+              </div>
+              <el-button type="warning" size="large" class="mint-btn" @click="goMintCollection">
+                🏆 立即铸造藏品
+              </el-button>
+            </div>
           </div>
         </div>
       </div>
@@ -902,6 +919,23 @@ const loadingRankings = ref(false)
   // 返回首页
   const goHome = () => {
     router.push('/')
+  }
+
+  // 跳转铸造藏品（携带正确率分数）
+  const mintRarityLabel = computed(() => {
+    if (accuracy.value >= 100) return '传奇'
+    if (accuracy.value >= 90)  return '史诗'
+    if (accuracy.value >= 80)  return '稀有'
+    return '普通'
+  })
+  const mintRarityClass = computed(() => {
+    if (accuracy.value >= 100) return 'rarity-legendary'
+    if (accuracy.value >= 90)  return 'rarity-epic'
+    if (accuracy.value >= 80)  return 'rarity-rare'
+    return 'rarity-common'
+  })
+  const goMintCollection = () => {
+    router.push({ path: '/digital-collection', query: { score: accuracy.value } })
   }
   
   // 获取选项前缀
@@ -1600,7 +1634,54 @@ const loadingRankings = ref(false)
     }
   }
 }
+
+// 铸造藏品入口
+.mint-entry {
+  margin-top: 20px;
+  background: linear-gradient(135deg, #1a0f05, #2d1505);
+  border: 1px solid rgba(217,119,6,0.35);
+  border-radius: 16px;
+  padding: 20px 22px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.mint-entry-tip {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 240px;
+
+  strong {
+    display: block;
+    font-size: 0.95rem;
+    color: #fcd34d;
+    margin-bottom: 4px;
+  }
+
+  p {
+    font-size: 0.82rem;
+    color: rgba(255,255,255,0.5);
+    margin: 0;
+  }
+}
+
+.mint-tip-icon { font-size: 2rem; flex-shrink: 0; }
+
+.mint-btn {
+  border-radius: 999px !important;
+  font-weight: 700 !important;
+  background: linear-gradient(135deg, #b45309, #d97706) !important;
+  border-color: transparent !important;
+  padding: 0 28px !important;
+}
+
+.rarity-common    { color: #9ca3af; font-weight: 700; }
+.rarity-rare      { color: #60a5fa; font-weight: 700; }
+.rarity-epic      { color: #a78bfa; font-weight: 700; }
+.rarity-legendary { color: #fcd34d; font-weight: 700; }
+
 </style>
-
-
-  

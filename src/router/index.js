@@ -45,6 +45,18 @@ const routes = [
         component: () => import('../views/AiChat.vue'),
         meta: { title: 'AI智能问答' }
         // 注意：登录拦截在页面内部处理（展示遮罩），不在路由守卫拦截
+    },
+    {
+        path: '/digital-collection',
+        name: 'DigitalCollection',
+        component: () => import('../views/DigitalCollection.vue'),
+        meta: { title: '数字藏品' }
+    },
+    {
+        path: '/heritage-map',
+        name: 'HeritageMap',
+        component: () => import('../views/HeritageMap.vue'),
+        meta: { title: '非遗地图' }
     }
 ]
 

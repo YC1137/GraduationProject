@@ -9,11 +9,20 @@ import com.heritage.service.CommentService;
 import com.heritage.service.HeritageService;
 import com.heritage.service.QuizService;
 import com.heritage.service.UserService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * 后台管理控制器
@@ -196,5 +205,45 @@ public class AdminController {
     public ApiResponse<Void> deleteComment(@PathVariable Long id) {
         commentService.deleteComment(id);
         return ApiResponse.success("删除成功", null);
+    }
+
+    /**
+     * 上传图片（缩略图、轮播图等）
+     */
+    @PostMapping("/upload")
+    public ApiResponse<String> uploadImage(
+            @RequestParam("file") MultipartFile file,
+            HttpServletRequest request) {
+        if (file.isEmpty()) return ApiResponse.error("文件不能为空");
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) return ApiResponse.error("只允许上传图片");
+
+        String uploadDirStr = System.getProperty("user.dir") + File.separator + "uploads";
+        Path uploadDir = Paths.get(uploadDirStr);
+        try {
+            if (!Files.exists(uploadDir)) Files.createDirectories(uploadDir);
+
+            String original = file.getOriginalFilename();
+            String ext = (original != null && original.contains("."))
+                    ? original.substring(original.lastIndexOf(".")) : ".jpg";
+            String fileName = UUID.randomUUID().toString().replace("-", "") + ext;
+            Path target = uploadDir.resolve(fileName);
+            try (InputStream in = file.getInputStream()) {
+                Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
+            }
+
+            String hostHeader = request.getHeader("Host");
+            String baseUrl;
+            if (hostHeader != null && !hostHeader.isEmpty()) {
+                baseUrl = request.getScheme() + "://" + hostHeader + request.getContextPath();
+            } else {
+                baseUrl = request.getScheme() + "://" + request.getServerName()
+                        + ":" + request.getServerPort() + request.getContextPath();
+            }
+            String imageUrl = baseUrl + "/uploads/" + fileName;
+            return ApiResponse.success("上传成功", imageUrl);
+        } catch (Exception e) {
+            return ApiResponse.error("上传失败：" + e.getMessage());
+        }
     }
 }

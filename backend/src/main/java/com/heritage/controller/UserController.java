@@ -197,8 +197,15 @@ public class UserController {
             try (InputStream in = file.getInputStream()) {
                 Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
             }
-            String baseUrl = request.getScheme() + "://" + request.getServerName()
-                    + ":" + request.getServerPort() + request.getContextPath();
+            // 优先用 Host 请求头（客户端实际访问的地址），兼容手机端通过局域网 IP 访问
+            String hostHeader = request.getHeader("Host");
+            String baseUrl;
+            if (hostHeader != null && !hostHeader.isEmpty()) {
+                baseUrl = request.getScheme() + "://" + hostHeader + request.getContextPath();
+            } else {
+                baseUrl = request.getScheme() + "://" + request.getServerName()
+                        + ":" + request.getServerPort() + request.getContextPath();
+            }
             String avatarUrl = baseUrl + "/uploads/" + fileName;
 
             User user = userService.updateAvatar(userId, avatarUrl);

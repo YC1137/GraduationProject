@@ -64,7 +64,7 @@
               <!-- 已登录状态 -->
               <div v-else class="user-dropdown-wrap" @click="toggleUserMenu" v-click-outside="closeUserMenu">
                 <div class="user-info" :class="{ open: userMenuOpen }">
-                  <el-avatar :src="authStore.currentUser.avatar" :size="32" />
+                  <el-avatar :src="fixedAvatar" :size="32" />
                   <span class="username">{{ authStore.currentUser.username }}</span>
                   <svg class="arrow-icon" :class="{ rotated: userMenuOpen }" viewBox="0 0 24 24" width="14" height="14"><path d="M7 10l5 5 5-5z" fill="currentColor"/></svg>
                 </div>
@@ -72,7 +72,7 @@
                 <div class="user-panel" v-show="userMenuOpen">
                   <!-- 用户信息头部 -->
                   <div class="panel-header">
-                    <el-avatar :src="authStore.currentUser.avatar" :size="48" class="panel-avatar" />
+                    <el-avatar :src="fixedAvatar" :size="48" class="panel-avatar" />
                     <div class="panel-user-info">
                       <div class="panel-username">{{ authStore.currentUser.username }}</div>
                       <div class="panel-email">{{ authStore.currentUser.email || '暂无邮箱' }}</div>
@@ -159,7 +159,7 @@
             <!-- 已登录状态 -->
             <div v-else class="mobile-user-info">
               <div class="user-profile">
-                <el-avatar :src="authStore.currentUser.avatar" :size="40" />
+                <el-avatar :src="fixedAvatar" :size="40" />
                 <div class="user-details">
                   <div class="username">{{ authStore.currentUser.username }}</div>
                   <div class="user-email">{{ authStore.currentUser.email }}</div>
@@ -228,6 +228,13 @@
   const loginMode = ref('login')
   
   const isMobile = computed(() => windowWidth.value <= 768)
+
+// 修正头像 URL：将 localhost 替换为当前访问的实际 hostname，兼容手机端局域网访问
+const fixedAvatar = computed(() => {
+  const src = authStore.currentUser?.avatar
+  if (!src) return ''
+  return src.replace(/http:\/\/localhost:/g, `http://${window.location.hostname}:`)
+})
 
   const toggleUserMenu = () => { userMenuOpen.value = !userMenuOpen.value }
   const closeUserMenu = () => { userMenuOpen.value = false }
@@ -392,7 +399,7 @@
     font-size: 1rem;
     color: #000;
     margin: 0;
-    font-family: 'STLiti', '隶书', 'LiSu', serif;
+    font-family: 'STLiti', '隶书', 'LiSu', 'Ma Shan Zheng', serif;
     width: 100%;
     text-align: justify;
     text-align-last: justify;

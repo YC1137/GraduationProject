@@ -64,6 +64,21 @@
             clearable
           />
         </el-form-item>
+
+        <!-- 图形验证码 -->
+        <el-form-item>
+          <div class="verify-row">
+            <el-input
+              v-model="inputCode"
+              placeholder="请输入验证码"
+              size="large"
+              clearable
+              class="verify-input"
+              @keyup.enter="handleSubmit"
+            />
+            <VerifyCode ref="verifyCodeRef" v-model:code="realCode" :width="110" :height="40" />
+          </div>
+        </el-form-item>
       </el-form>
       
       <template #footer>
@@ -99,6 +114,7 @@
   import { ElMessage } from 'element-plus'
   import { User, Lock, Message } from '@element-plus/icons-vue'
   import { useAuthStore } from '@/stores/auth'
+  import VerifyCode from './VerifyCode.vue'
   
   const props = defineProps({
     modelValue: {
@@ -117,6 +133,11 @@
   const formRef = ref(null)
   const loading = ref(false)
   const isLogin = ref(props.defaultMode === 'login')
+
+  // 验证码
+  const verifyCodeRef = ref(null)
+  const realCode = ref('')       // canvas 生成的真实验证码
+  const inputCode = ref('')      // 用户输入的验证码
   
   // 使用 computed 来同步 visible
   const visible = computed({
@@ -192,6 +213,8 @@
     formData.email = ''
     formData.password = ''
     formData.confirmPassword = ''
+    inputCode.value = ''
+    verifyCodeRef.value?.refresh()
   }
   
   // 提交表单
@@ -200,6 +223,14 @@
     
     const valid = await formRef.value.validate()
     if (!valid) return
+
+    // 验证码校验（不区分大小写）
+    if (inputCode.value.trim().toLowerCase() !== realCode.value.toLowerCase()) {
+      ElMessage.error('验证码错误，请重新输入')
+      inputCode.value = ''
+      verifyCodeRef.value?.refresh()
+      return
+    }
     
     loading.value = true
     
@@ -214,6 +245,9 @@
           // 成功消息已在 authStore 中显示，这里不需要重复显示
           visible.value = false
           emit('success')
+        } else {
+          verifyCodeRef.value?.refresh()
+          inputCode.value = ''
         }
       } else {
         // 注册逻辑
@@ -226,10 +260,15 @@
           // 成功消息已在 authStore 中显示，这里不需要重复显示
           visible.value = false
           emit('success')
+        } else {
+          verifyCodeRef.value?.refresh()
+          inputCode.value = ''
         }
       }
     } catch (error) {
       // 错误消息已在 authStore 中显示，这里不需要重复显示
+      verifyCodeRef.value?.refresh()
+      inputCode.value = ''
     } finally {
       loading.value = false
     }
@@ -409,6 +448,17 @@
     }
   }
   
+  .verify-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+
+    .verify-input {
+      flex: 1;
+    }
+  }
+
   .dialog-footer {
     padding: 0 40px 40px;
     position: relative;

@@ -81,12 +81,68 @@
           </div>
         </div>
 
-        <!-- 右侧：公告栏 -->
+        <!-- 右侧：快捷导航 + 公告栏 -->
         <div class="notice-board">
-          <h2 class="section-title">
-            <span>公告栏</span>
-            <div class="title-decoration"></div>
-          </h2>
+          <!-- 快捷导航框 -->
+          <div class="quick-nav-grid">
+            <div class="quick-nav-card" @click="$router.push('/quiz')">
+              <div class="qnc-icon qnc-quiz">
+                <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="6" y="6" width="36" height="36" rx="6" fill="currentColor" opacity="0.15"/>
+                  <path d="M24 14c-3.86 0-7 3.14-7 7 0 2.5 1.32 4.7 3.3 5.97V30h7.4v-3.03A7 7 0 0 0 31 21c0-3.86-3.14-7-7-7zm-1.5 20h3v3h-3v-3z" fill="currentColor"/>
+                </svg>
+              </div>
+              <div class="qnc-body">
+                <span class="qnc-title">知识测验</span>
+                <span class="qnc-desc">挑战非遗知识，测测你知多少</span>
+              </div>
+              <el-icon class="qnc-arrow"><ArrowRight /></el-icon>
+            </div>
+
+            <div class="quick-nav-card" @click="$router.push('/ai-chat')">
+              <div class="qnc-icon qnc-ai">
+                <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="6" y="6" width="36" height="36" rx="6" fill="currentColor" opacity="0.15"/>
+                  <path d="M34 14H14a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4l3 4 3-4h10a2 2 0 0 0 2-2V16a2 2 0 0 0-2-2zm-13 9h-4v-2h4v2zm8 0h-6v-2h6v2zm0-4H18v-2h11v2z" fill="currentColor"/>
+                </svg>
+              </div>
+              <div class="qnc-body">
+                <span class="qnc-title">AI 问答</span>
+                <span class="qnc-desc">智能助手解答非遗相关问题</span>
+              </div>
+              <el-icon class="qnc-arrow"><ArrowRight /></el-icon>
+            </div>
+
+            <div class="quick-nav-card" @click="$router.push('/digital-collection')">
+              <div class="qnc-icon qnc-collection">
+                <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="6" y="6" width="36" height="36" rx="6" fill="currentColor" opacity="0.15"/>
+                  <path d="M36 12H12a2 2 0 0 0-2 2v20a2 2 0 0 0 2 2h24a2 2 0 0 0 2-2V14a2 2 0 0 0-2-2zm-12 3l3 6h-6l3-6zm-8 15l4-5 3 3.5 4-5.5 5 7H10l6-6.5.5.5-.5 0z" fill="currentColor"/>
+                </svg>
+              </div>
+              <div class="qnc-body">
+                <span class="qnc-title">数字藏品</span>
+                <span class="qnc-desc">珍稀非遗文物数字化收藏展览</span>
+              </div>
+              <el-icon class="qnc-arrow"><ArrowRight /></el-icon>
+            </div>
+
+            <div class="quick-nav-card" @click="$router.push('/heritage-map')">
+              <div class="qnc-icon qnc-map">
+                <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="6" y="6" width="36" height="36" rx="6" fill="currentColor" opacity="0.15"/>
+                  <path d="M24 10c-5.52 0-10 4.48-10 10 0 7.5 10 18 10 18s10-10.5 10-18c0-5.52-4.48-10-10-10zm0 13a3 3 0 1 1 0-6 3 3 0 0 1 0 6z" fill="currentColor"/>
+                </svg>
+              </div>
+              <div class="qnc-body">
+                <span class="qnc-title">非遗地图</span>
+                <span class="qnc-desc">探索各地非遗项目的地域分布</span>
+              </div>
+              <el-icon class="qnc-arrow"><ArrowRight /></el-icon>
+            </div>
+          </div>
+
+          <!-- 公告栏 -->
           <div class="notice-list">
             <div class="notice-item" v-for="notice in notices" :key="notice.id">
               <div class="notice-tag" :class="notice.type">{{ notice.tag }}</div>
@@ -398,11 +454,9 @@ onMounted(async () => {
     })
     
     const sortedByHot = [...validList].sort((a, b) => {
-      const hotA = (a.likes || 0) + (a.favorites || 0)
-      const hotB = (b.likes || 0) + (b.favorites || 0)
-      return hotB - hotA
+      return (b.views || 0) - (a.views || 0)
     })
-    featuredItems.value = sortedByHot.slice(0, 3)
+    featuredItems.value = sortedByHot.slice(0, 6)
     
     // 轮播图：从剩余项目中随机选择3个（避免与热门项目重复，且保持刷新随机性）
     const remainingList = validList.filter(item => !featuredItems.value.find(f => f.id === item.id))
@@ -764,6 +818,86 @@ const sidebarAllItems = ref([])
   color: var(--text-secondary);
 }
 
+// 快捷导航框
+.quick-nav-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.quick-nav-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 16px;
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,0.07);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+  overflow: hidden;
+
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    border-color: var(--primary-color);
+
+    .qnc-arrow {
+      opacity: 1;
+      transform: translateX(3px);
+    }
+  }
+}
+
+.qnc-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  svg {
+    width: 30px;
+    height: 30px;
+  }
+
+  &.qnc-quiz       { color: #e67e22; background: rgba(230,126,34,0.1); }
+  &.qnc-ai         { color: #8e44ad; background: rgba(142,68,173,0.1); }
+  &.qnc-collection { color: #c0392b; background: rgba(192,57,43,0.1); }
+  &.qnc-map        { color: #27ae60; background: rgba(39,174,96,0.1); }
+}
+
+.qnc-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.qnc-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.qnc-desc {
+  font-size: 0.75rem;
+  color: var(--text-light);
+}
+
+.qnc-arrow {
+  color: var(--text-light);
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.2s;
+  flex-shrink: 0;
+}
+
 // 热门项目
 .featured-section {
   padding: 60px 0;
@@ -1045,6 +1179,27 @@ const sidebarAllItems = ref([])
     }
   }
   
+  // 快捷导航框（手机端已随 notice-board 折叠到下方，保持 2 列）
+  .quick-nav-grid {
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .quick-nav-card {
+    padding: 12px 10px;
+    gap: 10px;
+  }
+
+  .qnc-icon {
+    width: 38px;
+    height: 38px;
+    svg { width: 22px; height: 22px; }
+  }
+
+  .qnc-title { font-size: 0.85rem; }
+  .qnc-desc  { display: none; }
+  .qnc-arrow { display: none; }
+
   // 热门项目
   .featured-section {
     padding: 30px 0;
