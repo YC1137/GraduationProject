@@ -51,6 +51,9 @@ public class Heritage {
     
     @Column(length = 500)
     private String audio;
+
+    @Column(name = "sidebar_image", length = 500)
+    private String sidebarImage;
     
     @Column(columnDefinition = "TEXT")
     private String timeline;

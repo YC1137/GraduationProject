@@ -1,5 +1,6 @@
 <template>
   <div class="heritage-management">
+
     <el-card>
       <template #header>
         <div class="card-header">
@@ -127,6 +128,26 @@
         <el-form-item label="音频" prop="audio">
           <el-input v-model="form.audio" />
         </el-form-item>
+        <el-form-item label="侧栏图" prop="sidebarImage">
+          <div class="image-upload-field">
+            <el-input v-model="form.sidebarImage" placeholder="粘贴图片URL，或点击右侧上传（留空则不设置）" class="url-input" />
+            <el-upload
+              :show-file-list="false"
+              :http-request="(opt) => uploadImage(opt, 'sidebarImage')"
+              accept="image/*"
+              class="upload-btn"
+            >
+              <el-button type="primary" :loading="uploadingSidebarItem">上传图片</el-button>
+            </el-upload>
+            <el-button v-if="form.sidebarImage" type="danger" @click="form.sidebarImage = ''">清除</el-button>
+          </div>
+          <div v-if="form.sidebarImage" class="img-preview sidebar-item-preview">
+            <a :href="'http://localhost:5173/detail/' + form.id" target="_blank" title="点击跳转项目详情页">
+              <img :src="form.sidebarImage" alt="侧栏图预览" />
+              <span class="preview-tip">点击可跳转详情页</span>
+            </a>
+          </div>
+        </el-form-item>
         <el-form-item label="时间线" prop="timeline">
           <el-input v-model="form.timeline" type="textarea" :rows="3" />
         </el-form-item>
@@ -144,8 +165,10 @@ import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import axios from 'axios'
 
-const UPLOAD_URL = 'http://localhost:8080/api/admin/upload'
+const BASE = 'http://localhost:8080/api'
+const UPLOAD_URL = `${BASE}/admin/upload`
 
+// ===== 非遗项目 =====
 const heritages = ref([])
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -154,6 +177,7 @@ const formRef = ref(null)
 const selectedRows = ref([])
 const uploadingThumbnail = ref(false)
 const uploadingImages = ref(false)
+const uploadingSidebarItem = ref(false)
 
 const form = ref({
   id: null,
@@ -168,6 +192,7 @@ const form = ref({
   images: '',
   video: '',
   audio: '',
+  sidebarImage: '',
   timeline: ''
 })
 
@@ -202,6 +227,7 @@ const uploadImage = async (options, target) => {
   fd.append('file', file)
 
   if (target === 'thumbnail') uploadingThumbnail.value = true
+  else if (target === 'sidebarImage') uploadingSidebarItem.value = true
   else uploadingImages.value = true
 
   try {
@@ -212,6 +238,8 @@ const uploadImage = async (options, target) => {
       const url = res.data.data
       if (target === 'thumbnail') {
         form.value.thumbnail = url
+      } else if (target === 'sidebarImage') {
+        form.value.sidebarImage = url
       } else {
         // 追加到 images 数组
         const arr = [...parsedImages.value, url]
@@ -225,6 +253,7 @@ const uploadImage = async (options, target) => {
     ElMessage.error('上传失败：' + (e.message || '网络错误'))
   } finally {
     if (target === 'thumbnail') uploadingThumbnail.value = false
+    else if (target === 'sidebarImage') uploadingSidebarItem.value = false
     else uploadingImages.value = false
   }
 }
@@ -266,6 +295,7 @@ const handleAdd = () => {
     images: '',
     video: '',
     audio: '',
+    sidebarImage: '',
     timeline: ''
   }
   dialogVisible.value = true
@@ -551,6 +581,46 @@ onMounted(() => {
       padding: 0;
       line-height: 1;
     }
+  }
+}
+
+.sidebar-item-preview {
+  a {
+    display: inline-block;
+    position: relative;
+    text-decoration: none;
+    &:hover img {
+      opacity: 0.85;
+      outline: 2px solid #409eff;
+    }
+    &:hover .preview-tip {
+      opacity: 1;
+    }
+  }
+  img {
+    max-width: 160px;
+    max-height: 120px;
+    border: 1px solid #dcdfe6;
+    border-radius: 4px;
+    object-fit: cover;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    display: block;
+  }
+  .preview-tip {
+    position: absolute;
+    bottom: 4px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 11px;
+    color: #fff;
+    background: rgba(0,0,0,0.5);
+    border-radius: 0 0 4px 4px;
+    padding: 2px 0;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
   }
 }
 </style>

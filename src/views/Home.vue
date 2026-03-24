@@ -31,6 +31,32 @@
       </el-carousel>
     </section>
 
+    <!-- 横向滚动图片带 -->
+    <template v-if="sidebarAllItems.length">
+      <div class="marquee-section">
+        <div class="marquee-row">
+          <div class="marquee-track marquee-left">
+            <div
+              v-for="item in sidebarAllItems"
+              :key="'m1-' + item._fillIdx"
+              class="marquee-item"
+              @click="goToDetail(item.id)"
+            >
+              <img :src="item.sidebarImage" :alt="item.name" />
+            </div>
+            <div
+              v-for="item in sidebarAllItems"
+              :key="'m1c-' + item._fillIdx"
+              class="marquee-item"
+              @click="goToDetail(item.id)"
+            >
+              <img :src="item.sidebarImage" :alt="item.name" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+
     <!-- 热门项目 + 公告栏 -->
     <section class="featured-section container">
       <div class="featured-layout">
@@ -158,9 +184,6 @@
       </div>
     </section>
 
-    <!-- 皮影装饰 -->
-    <img src="@/img/piying.png" class="piying-decoration piying-right" alt="" aria-hidden="true" />
-    <img src="@/img/piying.png" class="piying-decoration piying-left"  alt="" aria-hidden="true" />
   </div>
 </template>
 
@@ -285,6 +308,12 @@ const validateId = (id) => {
   return null
 }
 
+// 修复图片 URL：将 localhost 替换为当前访问的主机名，解决手机端无法加载的问题
+const fixImageUrl = (url) => {
+  if (!url || typeof url !== 'string') return url
+  return url.replace(/localhost/g, window.location.hostname)
+}
+
 const getLevelIcon = (name) => {
   const iconMap = {
     '国家级': 'Trophy',
@@ -382,7 +411,7 @@ onMounted(async () => {
     // 对轮播图数据进行安全处理
     carouselItems.value = shuffledRemaining.slice(0, 3).map(item => ({
       ...item,
-      thumbnail: validateImageUrl(item.thumbnail),
+      thumbnail: fixImageUrl(validateImageUrl(item.thumbnail)),
       name: sanitizeText(item.name || ''),
       description: sanitizeText(item.description || '')
     }))
@@ -433,6 +462,21 @@ onMounted(async () => {
       name: sanitizeText(name),
       count: levelCount[name] || 0
     }))
+
+    // 收集有侧栏图的项目，用于横向滚动带
+    const rawSidebar = validList.filter(item => item.sidebarImage)
+    if (rawSidebar.length > 0) {
+      // 生成足够多的项目保证滚动流畅（至少20张）
+      const minCount = 20
+      const seq = []
+      for (let i = 0; i < Math.max(minCount, rawSidebar.length); i++) {
+        const src = rawSidebar[i % rawSidebar.length]
+        seq.push({ ...src, sidebarImage: fixImageUrl(src.sidebarImage), _fillIdx: i })
+      }
+      sidebarAllItems.value = seq
+    } else {
+      sidebarAllItems.value = []
+    }
   } catch (error) {
     console.error('Error loading heritage data:', error)
     // 可以在这里添加错误处理，比如显示错误提示
@@ -483,6 +527,10 @@ const goToCategory = (type, value) => {
 const handleTabClick = () => {
   // 处理标签页切换
 }
+
+// 侧栏图项目列表
+const sidebarAllItems = ref([])
+
 </script>
 
 <style lang="scss" scoped>
@@ -494,7 +542,7 @@ const handleTabClick = () => {
 // 轮播图区域
 .hero-section {
   margin-top: -80px;
-  max-width: 1200px;
+  max-width: 1450px;
   margin-left: auto;
   margin-right: auto;
   padding: 0 20px;
@@ -1102,32 +1150,67 @@ const handleTabClick = () => {
   }
 }
 
-// 皮影装饰
-.piying-decoration {
-  position: fixed;
-  bottom: 0;
-  width: 160px;
-  height: auto;
-  opacity: 0.82;
-  pointer-events: none;
-  z-index: 10;
-  filter: drop-shadow(2px 4px 8px rgba(0,0,0,0.18));
+
+
+// 横向滚动图片带
+@keyframes marqueeLeft {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }
 
-.piying-right {
-  right: 24px;
+.marquee-section {
+  width: 100%;
+  overflow: hidden;
+  padding: 10px 0;
 }
 
-.piying-left {
-  left: 24px;
-  transform: scaleX(-1);
+.marquee-row {
+  overflow: hidden;
+  width: 100%;
+}
+
+.marquee-track {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  will-change: transform;
+  width: max-content;
+  animation: marqueeLeft 60s linear infinite;
+
+  &:hover {
+    animation-play-state: paused;
+  }
+}
+
+.marquee-item {
+  cursor: pointer;
+  flex-shrink: 0;
+
+  img {
+    width: 80px;
+    height: 72px;
+    object-fit: cover;
+    display: block;
+    border-radius: 6px;
+    filter:
+      drop-shadow(0 0 1px rgba(0,0,0,0.4))
+      drop-shadow(0 2px 4px rgba(0,0,0,0.15));
+    transition: transform 0.2s;
+  }
+
+  &:hover img {
+    transform: scale(1.08);
+  }
 }
 
 @media (max-width: 768px) {
-  .piying-decoration {
-    width: 100px;
+  .marquee-section {
+    padding: 6px 0;
   }
-  .piying-right { right: 12px; }
-  .piying-left  { left: 12px; }
+  .marquee-item img {
+    width: 60px;
+    height: 54px;
+  }
 }
 </style>
+

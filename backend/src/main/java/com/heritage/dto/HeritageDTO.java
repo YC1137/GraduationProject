@@ -26,6 +26,7 @@ public class HeritageDTO {
     private List<String> images;
     private String video;
     private String audio;
+    private String sidebarImage;
     private List<TimelineItem> timeline;
     private Integer likes;
     private Integer favorites;
@@ -54,6 +55,7 @@ public class HeritageDTO {
         dto.setThumbnail(heritage.getThumbnail());
         dto.setVideo(heritage.getVideo());
         dto.setAudio(heritage.getAudio());
+        dto.setSidebarImage(heritage.getSidebarImage());
         dto.setLikes(heritage.getLikes());
         dto.setFavorites(heritage.getFavorites());
         dto.setViews(heritage.getViews());
