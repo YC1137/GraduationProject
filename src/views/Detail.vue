@@ -191,7 +191,6 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useHeritageStore } from '@/stores/heritage'
-import { useUserStore } from '@/stores/user'
 import { ElMessage } from 'element-plus'
 import { View, Picture } from '@element-plus/icons-vue'
 import CommentSection from '@/components/heritage/CommentSection.vue'
@@ -200,7 +199,6 @@ import ActionButtons from '@/components/heritage/ActionButtons.vue'
   const route = useRoute()
   const router = useRouter()
   const heritageStore = useHeritageStore()
-  const userStore = useUserStore()
 
   // 将 localhost 替换为当前访问的主机名，解决手机端无法加载本地上传图片的问题
   const fixImageUrl = (url) => {
