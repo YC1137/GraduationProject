@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+﻿import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { ElMessage } from 'element-plus'
 
@@ -74,7 +74,7 @@ const router = createRouter({
 
 // 路由守卫 - 登录验证和页面标题
 router.beforeEach((to, from, next) => {
-    document.title = to.meta.title ? `${to.meta.title} - 非遗数字化展示平台` : '非遗数字化展示平台'
+    document.title = to.meta.title ? `${to.meta.title} - 遗见` : '遗见'
     
     // 检查是否需要登录
     if (to.meta.requiresAuth) {

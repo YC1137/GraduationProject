@@ -5,9 +5,9 @@
         <div class="header-top">
           <!-- Logo 和标题 -->
           <div class="logo-section" @click="goHome">
-            <div class="logo-icon">非遗</div>
+            <img src="@/img/logo.png" alt="logo" class="logo-icon" />
             <div class="logo-text">
-              <h1 class="site-title">非遗数字化展示平台</h1>
+              <h1 class="site-title">遗见</h1>
               <p class="site-slogan">百闻不如遗见</p>
             </div>
           </div>
@@ -367,16 +367,8 @@ const fixedAvatar = computed(() => {
   .logo-icon {
     width: 50px;
     height: 50px;
-    background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
-    color: #ffffff;
     border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    font-weight: bold;
-    letter-spacing: 2px;
-    box-shadow: var(--shadow-sm);
+    object-fit: contain;
     flex-shrink: 0;
   }
   
@@ -387,11 +379,12 @@ const fixedAvatar = computed(() => {
   }
 
   .site-title {
-    font-size: 1.5rem;
-    font-weight: 600;
+    font-size: 1.6rem;
+    font-weight: 400;
+    font-family: 'ZCOOL XiaoWei', 'Ma Shan Zheng', serif;
     color: var(--text-primary);
     margin: 0;
-    letter-spacing: 0.08em;
+    letter-spacing: 4px;
     white-space: nowrap;
   }
 
@@ -807,7 +800,6 @@ const fixedAvatar = computed(() => {
     .logo-icon {
       width: 40px;
       height: 40px;
-      font-size: 16px;
     }
     
     .site-title {
@@ -833,7 +825,6 @@ const fixedAvatar = computed(() => {
     .logo-icon {
       width: 36px;
       height: 36px;
-      font-size: 14px;
     }
   }
   </style>

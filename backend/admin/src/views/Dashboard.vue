@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="dashboard">
     <el-row :gutter="20">
       <el-col :span="6">
@@ -60,11 +60,11 @@
         <el-card>
           <template #header>
             <div class="card-header">
-              <span>欢迎来到非遗数字化展示平台后台管理系统</span>
+              <span>欢迎来到遗见后台管理系统</span>
             </div>
           </template>
           <div class="welcome-content">
-            <p>本系统用于管理非遗数字化展示平台的各种数据，包括：</p>
+            <p>本系统用于管理遗见的各种数据，包括：</p>
             <ul>
               <li>用户管理：查看、编辑用户信息，管理用户角色</li>
               <li>非遗管理：添加、编辑、删除非遗项目</li>

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <el-container class="layout-container">
     <el-aside width="200px" class="aside">
       <div class="logo">非遗管理平台</div>
@@ -34,7 +34,7 @@
     <el-container>
       <el-header class="header">
         <div class="header-content">
-          <span class="title">非遗数字化展示平台 - 后台管理系统</span>
+          <span class="title">遗见 - 后台管理系统</span>
           <div class="user-info">
             <el-dropdown @command="handleCommand">
               <span class="el-dropdown-link">
