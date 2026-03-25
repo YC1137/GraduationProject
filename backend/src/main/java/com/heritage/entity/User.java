@@ -33,6 +33,9 @@ public class User {
     
     @Column(length = 20)
     private String phone;
+
+    @Column(name = "wallet_address", unique = true, length = 50)
+    private String walletAddress;
     
     @Column(nullable = false, length = 20, columnDefinition = "VARCHAR(20) DEFAULT 'USER'")
     private String role = "USER";

@@ -29,7 +29,7 @@
         :key="comment.id"
         class="comment-item"
       >
-        <el-avatar :src="comment.avatar" :size="50" />
+        <el-avatar :src="comment.avatar || '/logo.png'" :size="50" />
         <div class="comment-content">
           <div class="comment-header">
             <span class="comment-username">{{ comment.username }}</span>

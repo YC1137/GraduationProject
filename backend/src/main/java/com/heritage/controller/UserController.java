@@ -47,9 +47,11 @@ public class UserController {
             User user = userService.register(request.getUsername(), request.getPassword(), request.getEmail());
             
             Map<String, Object> data = new HashMap<>();
+            data.put("userId", user.getId());
             data.put("username", user.getUsername());
             data.put("email", user.getEmail());
             data.put("avatar", user.getAvatar());
+            data.put("walletAddress", user.getWalletAddress());
             
             return ApiResponse.success("注册成功", data);
         } catch (RuntimeException e) {
@@ -70,6 +72,7 @@ public class UserController {
             data.put("username", user.getUsername());
             data.put("email", user.getEmail());
             data.put("avatar", user.getAvatar());
+            data.put("walletAddress", user.getWalletAddress());
             data.put("token", "mock-token-" + user.getId()); // 简化版token
             
             return ApiResponse.success("登录成功", data);

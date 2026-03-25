@@ -5,7 +5,7 @@
       <!-- 用户信息卡片 -->
       <div class="profile-card">
         <div class="profile-avatar-wrap" @click="triggerAvatarUpload" title="点击更换头像">
-          <el-avatar :src="authStore.currentUser?.avatar" :size="80" class="profile-avatar" />
+          <el-avatar :src="authStore.currentUser?.avatar || '/logo.png'" :size="80" class="profile-avatar" />
           <div class="avatar-overlay">
             <svg viewBox="0 0 24 24" width="20" height="20" fill="#fff">
               <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
@@ -36,7 +36,13 @@
               <span class="stat-num">{{ likeList.length }}</span>
               <span class="stat-label">点赞</span>
             </div>
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+              <span class="stat-num">{{ digitalAssetList.length }}</span>
+              <span class="stat-label">数字藏品</span>
+            </div>
           </div>
+
         </div>
       </div>
 
@@ -60,16 +66,30 @@
           我的点赞
           <span class="tab-count">{{ likeList.length }}</span>
         </button>
+        <button
+          class="tab-btn"
+          :class="{ active: activeTab === 'assets' }"
+          @click="switchTab('assets')"
+        >
+          <svg viewBox="0 0 24 24" class="tab-icon"><path d="M12 2L3 7v10l9 5 9-5V7l-9-5zm0 2.18L18.74 8 12 11.82 5.26 8 12 4.18zM5 9.69l6 3.4v6.73l-6-3.33V9.69zm14 6.8l-6 3.33v-6.73l6-3.4v6.8z"/></svg>
+          我的数字藏品
+          <span class="tab-count">{{ digitalAssetList.length }}</span>
+        </button>
       </div>
+
 
       <!-- 内容区域 -->
       <div class="content-area" v-loading="loading">
 
-        <!-- 空状态 -->
-        <div
-          v-if="!loading && currentList.length === 0"
-          class="empty-state"
-        >
+        <div v-if="activeTab === 'assets' && !loading && digitalAssetList.length === 0" class="empty-state">
+          <div class="empty-icon">
+            <svg viewBox="0 0 24 24"><path d="M12 2L3 7v10l9 5 9-5V7l-9-5zm0 2.18L18.74 8 12 11.82 5.26 8 12 4.18zM5 9.69l6 3.4v6.73l-6-3.33V9.69zm14 6.8l-6 3.33v-6.73l6-3.4v6.8z"/></svg>
+          </div>
+          <p class="empty-text">还没有数字藏品，去数字藏品页面铸造吧</p>
+          <el-button type="primary" @click="$router.push('/digital-collection')">去铸造</el-button>
+        </div>
+
+        <div v-else-if="activeTab !== 'assets' && !loading && currentList.length === 0" class="empty-state">
           <div class="empty-icon">
             <svg v-if="activeTab === 'favorites'" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
             <svg v-else viewBox="0 0 24 24"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>
@@ -78,15 +98,13 @@
           <el-button type="primary" @click="$router.push('/category')">去发现更多</el-button>
         </div>
 
-        <!-- 卡片列表 -->
-        <div v-else class="heritage-grid">
+        <div v-else-if="activeTab !== 'assets'" class="heritage-grid">
           <div
             v-for="item in currentList"
             :key="item.id"
             class="heritage-card"
             @click="goDetail(item.id)"
           >
-            <!-- 封面图 -->
             <div class="card-cover">
               <img
                 :src="getThumbnail(item)"
@@ -94,7 +112,6 @@
                 class="cover-img"
                 @error="handleImgError"
               />
-              <!-- 取消按钮 -->
               <button
                 class="remove-btn"
                 @click.stop="removeItem(item)"
@@ -103,7 +120,6 @@
                 <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
               </button>
             </div>
-            <!-- 信息 -->
             <div class="card-body">
               <h3 class="card-title">{{ item.name }}</h3>
               <div class="card-tags">
@@ -125,7 +141,28 @@
           </div>
         </div>
 
+        <div v-else class="asset-grid">
+          <div v-for="asset in digitalAssetList" :key="asset.id" class="asset-card" :class="asset.rarityClass">
+            <div class="asset-cover-wrap">
+              <img :src="asset.cover" :alt="asset.name" class="asset-cover" @error="handleImgError" />
+              <span class="asset-rarity" :class="asset.rarityClass">{{ asset.rarity }}</span>
+            </div>
+            <div class="asset-body">
+              <h3 class="asset-name">{{ asset.name }}</h3>
+              <p class="asset-meta">编号：{{ asset.serial || '-' }}</p>
+              <p class="asset-meta">来源：{{ asset.origin || '-' }}</p>
+              <p class="asset-meta">获得时间：{{ asset.ownedAt || '-' }}</p>
+              <p class="asset-meta">交易哈希：{{ shortHash(asset.txHash) }}</p>
+              <div class="asset-actions">
+                <span class="chain-status" :class="asset.onChain ? 'ok' : 'pending'">{{ asset.onChain ? '已上链' : '待确认' }}</span>
+                <a v-if="asset.explorerUrl" :href="asset.explorerUrl" target="_blank" rel="noopener noreferrer">查看交易</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
+
     </div>
   </div>
 </template>
@@ -136,7 +173,9 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useUserStore } from '@/stores/user'
 import { getUserFavoritesDetail, getUserLikesDetail } from '@/api/user'
+import { getUserDigitalAssets } from '@/api/digitalAsset'
 import { ElMessage, ElMessageBox } from 'element-plus'
+
 
 const router = useRouter()
 const route = useRoute()
@@ -147,6 +186,8 @@ const activeTab = ref('favorites')
 const loading = ref(false)
 const favoriteList = ref([])
 const likeList = ref([])
+const digitalAssetList = ref([])
+
 
 // 头像上传
 const avatarInputRef = ref(null)
@@ -217,6 +258,23 @@ const loadLikes = async () => {
   }
 }
 
+// 加载我的数字藏品
+const loadDigitalAssets = async () => {
+  const userId = authStore.currentUser?.userId
+  if (!userId) return
+  loading.value = true
+  try {
+    const result = await getUserDigitalAssets(userId)
+    digitalAssetList.value = result || []
+  } catch (e) {
+    ElMessage.error('加载数字藏品失败')
+    digitalAssetList.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+
 // 取消收藏/点赞
 const removeItem = async (item) => {
   const action = activeTab.value === 'favorites' ? '取消收藏' : '取消点赞'
@@ -254,25 +312,32 @@ const goDetail = (id) => {
   router.push(`/detail/${id}`)
 }
 
+const shortHash = (hash) => {
+  if (!hash) return ''
+  return `${hash.slice(0, 10)}...${hash.slice(-8)}`
+}
+
+
 const initTab = async () => {
   if (!authStore.isLoggedIn) {
     ElMessage.warning('请先登录')
     router.push('/')
     return
   }
-  const tab = route.query.tab === 'likes' ? 'likes' : 'favorites'
+  const tab = ['favorites', 'likes', 'assets'].includes(route.query.tab) ? route.query.tab : 'favorites'
   activeTab.value = tab
-  // 同时加载两份数据，保证统计数字都正确
-  await Promise.all([loadFavorites(), loadLikes()])
+  await Promise.all([loadFavorites(), loadLikes(), loadDigitalAssets()])
 }
+
 
 onMounted(initTab)
 
 // 监听 URL query 变化（外部跳转时同步 activeTab）
 watch(() => route.query.tab, (tab) => {
-  const target = tab === 'likes' ? 'likes' : 'favorites'
+  const target = ['favorites', 'likes', 'assets'].includes(tab) ? tab : 'favorites'
   activeTab.value = target
 })
+
 </script>
 
 <style lang="scss" scoped>
@@ -640,8 +705,103 @@ watch(() => route.query.tab, (tab) => {
   }
 }
 
+.asset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 20px;
+}
+
+.asset-card {
+  background: var(--bg-light);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  overflow: hidden;
+
+  &.rare { border-color: rgba(37,99,235,0.35); }
+  &.epic { border-color: rgba(124,58,237,0.35); }
+  &.legendary { border-color: rgba(217,119,6,0.4); }
+}
+
+.asset-cover-wrap {
+  position: relative;
+  height: 180px;
+  background: var(--bg-dark);
+}
+
+.asset-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.asset-rarity {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  font-size: 12px;
+  padding: 2px 10px;
+  border-radius: 999px;
+
+  &.common { background: rgba(75,85,99,0.8); color: #e5e7eb; }
+  &.rare { background: rgba(30,64,175,0.8); color: #bfdbfe; }
+  &.epic { background: rgba(91,33,182,0.8); color: #ddd6fe; }
+  &.legendary { background: rgba(146,64,14,0.85); color: #fde68a; }
+}
+
+.asset-body {
+  padding: 14px;
+}
+
+.asset-name {
+  margin: 0 0 8px;
+  font-size: 16px;
+  color: var(--text-primary);
+}
+
+.asset-meta {
+  margin: 0 0 4px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.asset-actions {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  a {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-size: 13px;
+  }
+
+  a:hover {
+    text-decoration: underline;
+  }
+}
+
+.chain-status {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+
+  &.ok {
+    color: #16a34a;
+    background: rgba(22,163,74,0.12);
+  }
+
+  &.pending {
+    color: #d97706;
+    background: rgba(217,119,6,0.12);
+  }
+}
+
 // 响应式
 @media (max-width: 768px) {
+
   .profile-card {
     flex-direction: column;
     text-align: center;

@@ -9,6 +9,8 @@ import com.heritage.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.web3j.crypto.ECKeyPair;
+import org.web3j.crypto.Keys;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -43,6 +45,7 @@ public class UserService {
         user.setPassword(password); // 实际项目应该加密
         user.setEmail((email != null && !email.isBlank()) ? email : null);
         user.setAvatar(String.format("https://ui-avatars.com/api/?name=%s&background=c8302b&color=fff", username));
+        user.setWalletAddress(generateWalletAddress());
         user.setRole("USER"); // 默认角色为普通用户
         
         return userRepository.save(user);
@@ -61,6 +64,9 @@ public class UserService {
         }
         
         user.setLastLoginTime(LocalDateTime.now());
+        if (user.getWalletAddress() == null || user.getWalletAddress().isBlank()) {
+            user.setWalletAddress(generateWalletAddress());
+        }
         userRepository.save(user);
         
         return user;
@@ -165,5 +171,14 @@ public class UserService {
             .stream()
             .map(UserLike::getHeritageId)
             .collect(Collectors.toList());
+    }
+
+    private String generateWalletAddress() {
+        try {
+            ECKeyPair keyPair = Keys.createEcKeyPair();
+            return "0x" + Keys.getAddress(keyPair.getPublicKey());
+        } catch (Exception e) {
+            throw new RuntimeException("生成链地址失败", e);
+        }
     }
 }

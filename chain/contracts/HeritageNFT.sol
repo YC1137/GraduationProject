@@ -1,0 +1,23 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+contract HeritageNFT is ERC721URIStorage, Ownable {
+    uint256 public nextTokenId;
+
+    constructor() ERC721("HeritageNFT", "HNFT") Ownable(msg.sender) {}
+
+    function mint(address to, string memory tokenURI) external onlyOwner returns (uint256) {
+        uint256 tokenId = nextTokenId;
+        nextTokenId += 1;
+        _safeMint(to, tokenId);
+        _setTokenURI(tokenId, tokenURI);
+        return tokenId;
+    }
+
+    function setTokenURI(uint256 tokenId, string memory tokenURI) external onlyOwner {
+        _setTokenURI(tokenId, tokenURI);
+    }
+}

@@ -107,7 +107,8 @@
             </div>
           </div>
           <div class="drop-body">
-            <div class="drop-serial">{{ drop.serial }}</div>
+            <div class="drop-serial">系列编号：{{ drop.serial }}</div>
+
             <h3 class="drop-name">{{ drop.name }}</h3>
             <p class="drop-origin">{{ drop.origin }}</p>
             <div class="drop-meta">
@@ -137,10 +138,10 @@
                 <button
                   class="drop-btn claim-btn"
                   :class="drop.rarityClass"
-                  :disabled="isOwned(drop.id) || !authStore.isLoggedIn"
+                  :disabled="isMinting || isOwned(drop.id) || !authStore.isLoggedIn"
                   @click="claimDrop(drop)"
                 >
-                  {{ isOwned(drop.id) ? '已收藏' : authStore.isLoggedIn ? '立即收藏' : '登录后收藏' }}
+                  {{ isMinting ? '上链中...' : isOwned(drop.id) ? '已收藏' : authStore.isLoggedIn ? '立即收藏' : '登录后收藏' }}
                 </button>
               </template>
               <template v-else>
@@ -156,7 +157,12 @@
     <section class="dc-mine container" id="mine">
       <div class="dc-section-header">
         <h2 class="dc-section-title">我的藏品</h2>
-        <span class="dc-mine-count" v-if="authStore.isLoggedIn">共 {{ myCollections.length }} 件</span>
+        <div class="dc-mine-actions">
+          <span class="dc-wallet-tag" v-if="authStore.isLoggedIn && authStore.currentUser?.walletAddress">
+            链地址：{{ shortAddress(authStore.currentUser.walletAddress) }}
+          </span>
+          <span class="dc-mine-count" v-if="authStore.isLoggedIn">共 {{ myCollections.length }} 件</span>
+        </div>
       </div>
 
       <!-- 未登录 -->
@@ -184,7 +190,7 @@
       <div class="dc-mine-grid" v-else>
         <div
           v-for="item in myCollections"
-          :key="item.id + '-' + item.ownedAt"
+          :key="item.itemId + '-' + item.id"
           class="dc-mine-card"
           :class="item.rarityClass"
         >
@@ -194,7 +200,8 @@
             <div class="mine-rarity-tag" :class="item.rarityClass">{{ item.rarity }}</div>
           </div>
           <div class="mine-card-body">
-            <div class="mine-serial">{{ item.serial }}</div>
+            <div class="mine-serial">编号：{{ item.editionNo && item.total ? item.editionNo + '/' + item.total : item.serial }}</div>
+
             <h3 class="mine-name">{{ item.name }}</h3>
             <div class="mine-meta">
               <span>{{ item.origin }}</span>
@@ -203,6 +210,10 @@
               </span>
             </div>
             <div class="mine-date">获得时间：{{ item.ownedAt }}</div>
+            <div class="mine-chain" v-if="item.onChain">
+              <span>已上链</span>
+              <a :href="item.explorerUrl" target="_blank" rel="noopener noreferrer">查看交易</a>
+            </div>
           </div>
         </div>
       </div>
@@ -224,8 +235,13 @@
             </div>
             <div class="mint-rarity" :class="mintedItem?.rarityClass">{{ mintedItem?.rarity }}</div>
             <h2 class="mint-name">{{ mintedItem?.name }}</h2>
-            <div class="mint-serial">{{ mintedItem?.serial }}</div>
+            <div class="mint-serial">编号：{{ mintedItem?.editionNo && mintedItem?.total ? mintedItem.editionNo + '/' + mintedItem.total : mintedItem?.serial }}</div>
+
             <p class="mint-origin">{{ mintedItem?.origin }}</p>
+            <div class="mint-chain" v-if="mintedItem?.onChain">
+              <p>链上交易：{{ mintedItem?.txHash }}</p>
+              <a :href="mintedItem?.explorerUrl" target="_blank" rel="noopener noreferrer">在 Etherscan 查看</a>
+            </div>
             <button class="dc-btn-primary" @click="showMintModal=false">查看我的藏品</button>
           </div>
         </div>
@@ -240,7 +256,7 @@
           <strong>测验完成！</strong>
           <p>你的得分符合铸造条件，点击铸造你的专属藏品</p>
         </div>
-        <button class="dc-btn-primary sm" @click="mintFromQuiz">立即铸造</button>
+        <button class="dc-btn-primary sm" :disabled="isMinting" @click="mintFromQuiz">{{ isMinting ? '上链中...' : '立即铸造' }}</button>
         <button class="qr-close" @click="showQuizReward=false">×</button>
       </div>
     </div>
@@ -249,79 +265,60 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { ElMessage } from 'element-plus'
+import { getDigitalCollectionList, getUserDigitalAssets, mintDigitalAsset } from '../api/digitalAsset'
 
 const route  = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
-// ── 所有藏品定义 ──────────────────────────────────────────────
-const allItems = [
-  { id: 1,  name: '龙泉青瓷梅瓶',   serial: '#DC-00124', category: '陶瓷器物',
-    origin: '浙江·龙泉', era: '宋代', rarity: '稀有',   rarityClass: 'rare',
-    cover: 'https://images.unsplash.com/photo-1618220048045-10a6dbdf83e0?w=400&q=80',
-    glowColor: 'rgba(37,99,235,0.6)', scoreMin: 80, total: 500,  left: 142 },
-  { id: 2,  name: '苏绣双面绣屏',   serial: '#DC-00238', category: '纺织刺绣',
-    origin: '江苏·苏州', era: '清代', rarity: '传奇',   rarityClass: 'legendary',
-    cover: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&q=80',
-    glowColor: 'rgba(217,119,6,0.7)', scoreMin: 100, total: 100, left: 7 },
-  { id: 3,  name: '徽州木雕门楼',   serial: '#DC-00315', category: '木雕漆器',
-    origin: '安徽·徽州', era: '明代', rarity: '史诗',   rarityClass: 'epic',
-    cover: 'https://images.unsplash.com/photo-1509316785289-025f5b846b35?w=400&q=80',
-    glowColor: 'rgba(124,58,237,0.6)', scoreMin: 90, total: 300, left: 88 },
-  { id: 4,  name: '景泰蓝掐丝珐琅', serial: '#DC-00401', category: '铜器玉器',
-    origin: '北京',      era: '明代', rarity: '传奇',   rarityClass: 'legendary',
-    cover: 'https://images.unsplash.com/photo-1582650625119-3a31f8fa2699?w=400&q=80',
-    glowColor: 'rgba(217,119,6,0.7)', scoreMin: 100, total: 88,  left: 3 },
-  { id: 5,  name: '宣纸四尺整张',   serial: '#DC-00512', category: '书画典籍',
-    origin: '安徽·宣城', era: '当代', rarity: '普通',   rarityClass: 'common',
-    cover: 'https://images.unsplash.com/photo-1544967082-d9d25d867d66?w=400&q=80',
-    glowColor: 'rgba(100,100,100,0.3)', scoreMin: 60, total: 2000, left: 1234 },
-  { id: 6,  name: '蜀锦云纹锦段',   serial: '#DC-00617', category: '纺织刺绣',
-    origin: '四川·成都', era: '唐代', rarity: '史诗',   rarityClass: 'epic',
-    cover: 'https://images.unsplash.com/photo-1620207418302-439b387441b0?w=400&q=80',
-    glowColor: 'rgba(124,58,237,0.6)', scoreMin: 90, total: 200, left: 51 },
-  { id: 7,  name: '均窑玫瑰紫釉碗', serial: '#DC-00723', category: '陶瓷器物',
-    origin: '河南·禹州', era: '宋代', rarity: '稀有',   rarityClass: 'rare',
-    cover: 'https://images.unsplash.com/photo-1605721911519-3dfeb3be25e7?w=400&q=80',
-    glowColor: 'rgba(37,99,235,0.6)', scoreMin: 80, total: 500, left: 203 },
-  { id: 8,  name: '扬州漆器嵌螺钿', serial: '#DC-00831', category: '木雕漆器',
-    origin: '江苏·扬州', era: '清代', rarity: '稀有',   rarityClass: 'rare',
-    cover: 'https://images.unsplash.com/photo-1571942676516-bcab84649e44?w=400&q=80',
-    glowColor: 'rgba(37,99,235,0.6)', scoreMin: 80, total: 400, left: 167 },
-  { id: 9,  name: '云南傣族织锦',   serial: '#DC-00945', category: '纺织刺绣',
-    origin: '云南·西双版纳', era: '当代', rarity: '普通', rarityClass: 'common',
-    cover: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400&q=80',
-    glowColor: 'rgba(100,100,100,0.3)', scoreMin: 60, total: 1500, left: 892 },
-]
+const isMinting = ref(false)
 
-// ── 首发市场分组 ──────────────────────────────────────────────
-const drops = {
-  upcoming: [
-    { ...allItems[1], countdown: '02天 14:30:00', source: 'drop' },
-    { ...allItems[3], countdown: '05天 08:00:00', source: 'drop' },
-  ],
-  ongoing: [
-    { ...allItems[0], source: 'drop' },
-    { ...allItems[2], source: 'drop' },
-    { ...allItems[5], source: 'drop' },
-    { ...allItems[6], source: 'drop' },
-  ],
-  ended: [
-    { ...allItems[4], left: 0, source: 'drop' },
-    { ...allItems[7], left: 0, source: 'drop' },
-    { ...allItems[8], left: 0, source: 'drop' },
-  ]
+const shortAddress = (address) => {
+  if (!address) return ''
+  return `${address.slice(0, 6)}...${address.slice(-4)}`
 }
 
-const marketTab   = ref('ongoing')
-const currentDrops = computed(() => drops[marketTab.value] || [])
+const mintOnChainForItem = async (item) => {
+  return await mintDigitalAsset({
+    userId: authStore.currentUser?.userId,
+    itemId: item.id,
+    source: item.source,
+    ownedAt: new Date().toLocaleDateString('zh-CN')
+  })
+}
+
+const marketItems = ref([])
+
+const loadMarketCollections = async () => {
+  try {
+    const list = await getDigitalCollectionList()
+    marketItems.value = (list || []).map(item => ({
+      ...item,
+      source: 'drop'
+    }))
+  } catch {
+    marketItems.value = []
+  }
+}
+
+// ── 首发市场分组 ──────────────────────────────────────────────
+const drops = computed(() => ({
+  upcoming: marketItems.value.filter(i => i.saleStatus === 'upcoming'),
+  ongoing: marketItems.value.filter(i => i.saleStatus === 'ongoing'),
+  ended: marketItems.value.filter(i => i.saleStatus === 'ended')
+}))
+
+const marketTab = ref('ongoing')
+const currentDrops = computed(() => drops.value[marketTab.value] || [])
 
 // ── Banner 旋转展示 ─────────────────────────────────────────
-const showcaseItems = allItems.filter(i => ['legendary','epic'].includes(i.rarityClass)).slice(0, 3)
+const showcaseItems = computed(() =>
+  marketItems.value.filter(i => ['legendary', 'epic'].includes(i.rarityClass)).slice(0, 3)
+)
 
 const showcaseCardStyle = (i) => {
   const angles = [-18, 4, 22]
@@ -334,67 +331,86 @@ const showcaseCardStyle = (i) => {
   }
 }
 
-// ── 我的藏品（localStorage 持久化）────────────────────────────
-const STORAGE_KEY = computed(() =>
-  authStore.isLoggedIn ? `dc_owned_${authStore.currentUser?.userId}` : null
-)
-
+// ── 我的藏品（后端接口）──────────────────────────────────────
 const myCollections = ref([])
 
-const loadMyCollections = () => {
-  if (!STORAGE_KEY.value) { myCollections.value = []; return }
+const loadMyCollections = async () => {
+  if (!authStore.isLoggedIn || !authStore.currentUser?.userId) {
+    myCollections.value = []
+    return
+  }
   try {
-    myCollections.value = JSON.parse(localStorage.getItem(STORAGE_KEY.value) || '[]')
-  } catch { myCollections.value = [] }
+    myCollections.value = await getUserDigitalAssets(authStore.currentUser.userId)
+  } catch {
+    myCollections.value = []
+  }
 }
 
-const saveMyCollections = () => {
-  if (!STORAGE_KEY.value) return
-  localStorage.setItem(STORAGE_KEY.value, JSON.stringify(myCollections.value))
-}
-
-const isOwned = (id) => myCollections.value.some(c => c.id === id)
+const isOwned = (id) => myCollections.value.some(c => c.itemId === id)
 
 // ── 首发收藏 ────────────────────────────────────────────────
 const showMintModal = ref(false)
 const mintedItem    = ref(null)
 
-const claimDrop = (drop) => {
+const claimDrop = async (drop) => {
   if (!authStore.isLoggedIn) { ElMessage.warning('请先登录'); return }
   if (isOwned(drop.id)) { ElMessage.info('你已拥有此藏品'); return }
-  const now = new Date().toLocaleDateString('zh-CN')
-  myCollections.value.push({ ...drop, ownedAt: now, source: 'drop' })
-  saveMyCollections()
-  mintedItem.value = drop
-  showMintModal.value = true
-  // 减少剩余数（模拟）
-  const target = drops.ongoing.find(d => d.id === drop.id)
-  if (target && target.left > 0) target.left--
+  if (isMinting.value) { ElMessage.info('正在上链中，请稍候'); return }
+
+  isMinting.value = true
+  try {
+    ElMessage.info('正在提交上链交易...')
+    const minted = await mintOnChainForItem({ ...drop, source: 'drop' })
+
+    myCollections.value.unshift(minted)
+    mintedItem.value = minted
+    showMintModal.value = true
+    await loadMarketCollections()
+    ElMessage.success('上链成功，已收藏')
+  } catch (error) {
+    ElMessage.error(error?.message || '上链失败，请稍后重试')
+  } finally {
+    isMinting.value = false
+  }
 }
 
 // ── 测验结果触发铸造 ────────────────────────────────────────
 const showQuizReward = ref(false)
 const quizScore      = ref(0)
 
-const mintFromQuiz = () => {
+const mintFromQuiz = async () => {
   if (!authStore.isLoggedIn) { ElMessage.warning('请先登录'); return }
-  // 根据分数选择对应稀有度的未拥有藏品
+  if (isMinting.value) { ElMessage.info('正在上链中，请稍候'); return }
+
   let candidates = []
-  if (quizScore.value >= 100)     candidates = allItems.filter(i => i.rarityClass === 'legendary')
-  else if (quizScore.value >= 90) candidates = allItems.filter(i => i.rarityClass === 'epic')
-  else if (quizScore.value >= 80) candidates = allItems.filter(i => i.rarityClass === 'rare')
-  else                             candidates = allItems.filter(i => i.rarityClass === 'common')
+  if (quizScore.value >= 100)     candidates = marketItems.value.filter(i => i.rarityClass === 'legendary')
+  else if (quizScore.value >= 90) candidates = marketItems.value.filter(i => i.rarityClass === 'epic')
+  else if (quizScore.value >= 80) candidates = marketItems.value.filter(i => i.rarityClass === 'rare')
+  else                             candidates = marketItems.value.filter(i => i.rarityClass === 'common')
+
+  if (candidates.length === 0) { ElMessage.warning('当前暂无可铸造藏品，请联系管理员配置'); return }
 
   const unowned = candidates.filter(i => !isOwned(i.id))
   if (unowned.length === 0) { ElMessage.success('该稀有度藏品已全部收集！'); showQuizReward.value = false; return }
 
   const item = unowned[Math.floor(Math.random() * unowned.length)]
-  const now  = new Date().toLocaleDateString('zh-CN')
-  myCollections.value.push({ ...item, ownedAt: now, source: 'quiz' })
-  saveMyCollections()
-  mintedItem.value = item
-  showMintModal.value = true
-  showQuizReward.value = false
+
+  isMinting.value = true
+  try {
+    ElMessage.info('正在提交上链交易...')
+    const minted = await mintOnChainForItem({ ...item, source: 'quiz' })
+
+    myCollections.value.unshift(minted)
+    mintedItem.value = minted
+    showMintModal.value = true
+    showQuizReward.value = false
+    await loadMarketCollections()
+    ElMessage.success('上链成功，藏品已铸造')
+  } catch (error) {
+    ElMessage.error(error?.message || '上链失败，请稍后重试')
+  } finally {
+    isMinting.value = false
+  }
 }
 
 // ── 粒子样式 ────────────────────────────────────────────────
@@ -420,14 +436,17 @@ const scrollTo = (id) => {
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
-// ── 初始化：检查从 Quiz 跳转带参 ────────────────────────────
-onMounted(() => {
+watch(() => authStore.currentUser?.userId, () => {
   loadMyCollections()
+}, { immediate: true })
+
+// ── 初始化：检查从 Quiz 跳转带参 ────────────────────────────
+onMounted(async () => {
+  await loadMarketCollections()
   const score = parseInt(route.query.score)
   if (!isNaN(score) && score >= 60) {
     quizScore.value = score
     showQuizReward.value = true
-    // 清除 query 参数避免刷新重复触发
     router.replace({ path: '/digital-collection' })
   }
 })
@@ -584,6 +603,7 @@ $rarity-colors: (
   transition: opacity 0.2s, transform 0.2s;
 
   &:hover { opacity: 0.88; transform: translateY(-1px); }
+  &:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
   &.sm    { padding: 8px 20px; font-size: 0.85rem; }
 }
 
@@ -954,6 +974,22 @@ $rarity-colors: (
   padding: 20px 0 40px;
 }
 
+.dc-mine-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.dc-wallet-tag {
+  font-size: 0.72rem;
+  color: #93c5fd;
+  background: rgba(37, 99, 235, 0.15);
+  border: 1px solid rgba(37, 99, 235, 0.35);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
 .dc-mine-count {
   font-size: 0.85rem;
   color: rgba(255,255,255,0.35);
@@ -1074,6 +1110,27 @@ $rarity-colors: (
 .mine-date {
   font-size: 0.65rem;
   color: rgba(255,255,255,0.2);
+}
+
+.mine-chain {
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.68rem;
+
+  span {
+    color: #22c55e;
+  }
+
+  a {
+    color: #93c5fd;
+    text-decoration: none;
+  }
+
+  a:hover {
+    text-decoration: underline;
+  }
 }
 
 // ═══════════════════════════════════════════
@@ -1211,7 +1268,28 @@ $rarity-colors: (
 .mint-origin {
   font-size: 0.8rem;
   color: rgba(255,255,255,0.4);
-  margin: 0 0 24px;
+  margin: 0 0 12px;
+}
+
+.mint-chain {
+  margin-bottom: 18px;
+
+  p {
+    margin: 0 0 6px;
+    font-size: 0.72rem;
+    color: rgba(255,255,255,0.72);
+    word-break: break-all;
+  }
+
+  a {
+    font-size: 0.78rem;
+    color: #93c5fd;
+    text-decoration: none;
+  }
+
+  a:hover {
+    text-decoration: underline;
+  }
 }
 
 // ═══════════════════════════════════════════

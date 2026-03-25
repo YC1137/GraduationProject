@@ -57,7 +57,11 @@ request.interceptors.response.use(
                     return Promise.reject(error)
                 }
                 ElMessage.error(res.message || '请求失败')
-                return Promise.reject(new Error(res.message || '请求失败'))
+                const businessError = new Error(res.message || '请求失败')
+                businessError.__handled = true
+                businessError.__backendCode = res.code
+                businessError.config = response.config
+                return Promise.reject(businessError)
             }
         }
         
@@ -65,27 +69,27 @@ request.interceptors.response.use(
         return res
     },
     error => {
-        // 如果是登录错误已经被处理过，直接返回，不重复显示
-        if (error.__isLoginError) {
-            console.log('Login error already handled, skipping...')
+        // 业务错误已在成功拦截器里提示过，避免重复提示
+        if (error.__handled || error.__isLoginError) {
             return Promise.reject(error)
         }
 
         console.log('Error interceptor:', error.config?.url, error.message, error.response?.status, error.response?.data)
-        
+
         // 对于登录接口，直接显示账号或密码错误，不进入下面的状态码判断
         if (error.config?.url?.includes('/user/login')) {
-            console.log('Login error in error handler')
             ElMessage.error('账号或密码错误')
             return Promise.reject(error)
         }
 
-        let message = '网络请求失败'
+        let message = error.message || '网络请求失败'
 
-        if (error.response) {
+        if (error.code === 'ECONNABORTED') {
+            message = '请求超时，请稍后重试'
+        } else if (error.response) {
             switch (error.response.status) {
                 case 400:
-                    message = '请求参数错误'
+                    message = error.response.data?.message || '请求参数错误'
                     break
                 case 401:
                     message = '未授权，请登录'
@@ -97,10 +101,10 @@ request.interceptors.response.use(
                     message = '请求地址不存在'
                     break
                 case 500:
-                    message = '服务器内部错误'
+                    message = error.response.data?.message || '服务器内部错误'
                     break
                 default:
-                    message = error.response.data?.message || '请求失败'
+                    message = error.response.data?.message || message
             }
         }
 

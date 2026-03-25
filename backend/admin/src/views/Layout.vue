@@ -29,6 +29,10 @@
           <el-icon><Edit /></el-icon>
           <span>测验管理</span>
         </el-menu-item>
+        <el-menu-item index="/digital-collection">
+          <el-icon><CollectionTag /></el-icon>
+          <span>数字藏品管理</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>
@@ -61,7 +65,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { HomeFilled, User, Document, ChatDotRound, Edit, ArrowDown } from '@element-plus/icons-vue'
+import { HomeFilled, User, Document, ChatDotRound, Edit, ArrowDown, CollectionTag } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const route = useRoute()

@@ -31,6 +31,7 @@ export const useAuthStore = defineStore('auth', () => {
                 username: response.username,
                 email: response.email,
                 avatar: response.avatar,
+                walletAddress: response.walletAddress,
                 token: response.token,
                 loginTime: new Date().toISOString()
             }
