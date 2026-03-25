@@ -7,6 +7,7 @@ import HeritageManagement from '../views/HeritageManagement.vue'
 import CommentManagement from '../views/CommentManagement.vue'
 import QuizManagement from '../views/QuizManagement.vue'
 import DigitalCollectionManagement from '../views/DigitalCollectionManagement.vue'
+import BannerManagement from '../views/BannerManagement.vue'
 
 const routes = [
   {
@@ -48,6 +49,11 @@ const routes = [
         path: 'digital-collection',
         name: 'DigitalCollectionManagement',
         component: DigitalCollectionManagement
+      },
+      {
+        path: 'banner',
+        name: 'BannerManagement',
+        component: BannerManagement
       }
     ]
   }

@@ -11,8 +11,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
 
@@ -51,38 +52,24 @@ public class DigitalAssetService {
             throw new RuntimeException("用户链地址不存在，请重新登录后重试");
         }
 
-        // 生成随机编号
         Integer editionNo = generateRandomEditionNo(item.getId(), item.getTotal());
-        String serial = formatEditionSerial(editionNo, item.getTotal());
 
-        // 先保存记录（txHash 暂填占位），获得数据库 id，用于构建 tokenURI
+        BlockchainMintService.MintResult chainResult = blockchainMintService.mintToAddress(user.getWalletAddress(), request.getTokenUri());
+
         UserDigitalAsset asset = new UserDigitalAsset();
         asset.setUserId(user.getId());
         asset.setItemId(item.getId());
         asset.setName(item.getName());
-        asset.setNameEn(item.getNameEn());
         asset.setEditionNo(editionNo);
-        asset.setTotal(item.getTotal());
-        asset.setSerial(serial);
+        asset.setSerial(formatEditionSerial(item.getSerial(), editionNo, item.getTotal()));
+
         asset.setOrigin(item.getOrigin());
         asset.setCover(item.getCover());
         asset.setRarity(item.getRarity());
         asset.setRarityClass(item.getRarityClass());
         asset.setSource(request.getSource());
         asset.setOwnedAt(request.getOwnedAt());
-        // 临时占位，上链后更新
-        asset.setTxHash("pending");
-        asset.setContractAddress("pending");
-        asset.setChain("Sepolia");
-        asset.setOnChain(false);
-        asset = userDigitalAssetRepository.save(asset);
-
-        // 构建 base64 inline tokenURI，不依赖服务器，链上永久可读
-        String tokenUri = buildBase64TokenUri(asset);
-        asset.setTokenUri(tokenUri);
-
-        // 上链
-        BlockchainMintService.MintResult chainResult = blockchainMintService.mintToAddress(user.getWalletAddress(), tokenUri);
+        asset.setTokenUri(request.getTokenUri());
 
         asset.setTokenId(chainResult.getTokenId());
         asset.setTxHash(chainResult.getTxHash());
@@ -129,71 +116,9 @@ public class DigitalAssetService {
         return candidate;
     }
 
-    private String formatEditionSerial(Integer editionNo, Integer total) {
-        return editionNo + "/" + total;
-    }
-
-    /**
-     * 构建 base64 inline tokenURI，格式：data:application/json;base64,{base64编码的JSON}
-     * 直接内嵌 metadata，无需任何服务器，Etherscan/OpenSea 可直接解析
-     */
-    private String buildBase64TokenUri(UserDigitalAsset asset) {
-        String description = buildDescription(asset);
-
-        // attributes - all values in English to avoid encoding issues
-        StringBuilder attrs = new StringBuilder("[");
-        attrs.append("{\"trait_type\":\"Rarity\",\"value\":\"").append(esc(asset.getRarityClass())).append("\"}");
-        attrs.append(",{\"trait_type\":\"Source\",\"value\":\"Direct Claim\"}");
-        if (asset.getEditionNo() != null && asset.getTotal() != null) {
-            attrs.append(",{\"trait_type\":\"Edition\",\"value\":\"").append(asset.getEditionNo()).append("/").append(asset.getTotal()).append("\"}");
-            attrs.append(",{\"trait_type\":\"Total Supply\",\"value\":\"").append(asset.getTotal()).append("\"}");
-        }
-        attrs.append(",{\"trait_type\":\"Chain\",\"value\":\"Sepolia\"}");
-        attrs.append("]");
-
-        // name 优先用英文名，没有则用 HeritageNFT #id
-        String tokenIdStr = (asset.getTokenId() != null && !asset.getTokenId().isBlank())
-                ? asset.getTokenId() : String.valueOf(asset.getId());
-        String name = (asset.getNameEn() != null && !asset.getNameEn().isBlank())
-                ? asset.getNameEn() + " #" + tokenIdStr
-                : "HeritageNFT #" + tokenIdStr;
-        String image = asset.getCover() != null ? asset.getCover() : "";
-
-        String json = "{"
-                + "\"name\":\"" + esc(name) + "\","
-                + "\"description\":\"" + esc(description) + "\","
-                + "\"image\":\"" + esc(image) + "\","
-                + "\"attributes\":" + attrs
-                + "}";
-
-        String base64 = Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
-        return "data:application/json;base64," + base64;
-    }
-
-    private String buildDescription(UserDigitalAsset asset) {
-        List<String> parts = new ArrayList<>();
-        if (asset.getRarityClass() != null && !asset.getRarityClass().isBlank()) parts.add(asset.getRarityClass());
-        if (asset.getEditionNo() != null && asset.getTotal() != null)
-            parts.add("Edition " + asset.getEditionNo() + "/" + asset.getTotal());
-        parts.add("Direct Claim");
-        return String.join(" | ", parts);
-    }
-
-    /**
-     * 转义 JSON 字符串：特殊字符 + 所有非 ASCII 字符转为 Unicode 编码
-     * 保证最终 JSON 为纯 ASCII，Etherscan 任意环境均可正确解析
-     */
-    private String esc(String s) {
-        if (s == null) return "";
-        StringBuilder sb = new StringBuilder();
-        for (char c : s.toCharArray()) {
-            if (c == '\\') { sb.append("\\\\"); }
-            else if (c == '"') { sb.append("\\\""); }
-            else if (c == '\n') { sb.append("\\n"); }
-            else if (c == '\r') { sb.append("\\r"); }
-            else if (c > 0x7F) { sb.append(String.format("\\u%04x", (int) c)); }
-            else { sb.append(c); }
-        }
-        return sb.toString();
+    private String formatEditionSerial(String baseSerial, Integer editionNo, Integer total) {
+        String prefix = (baseSerial == null || baseSerial.isBlank()) ? "COLLECT" : baseSerial.trim();
+        return prefix + " · 第" + editionNo + "/" + total + "份";
     }
 }
+

@@ -27,17 +27,11 @@ public class UserDigitalAsset {
     @Column(nullable = false, length = 100)
     private String name;
 
-    @Column(name = "name_en", length = 100)
-    private String nameEn;
-
     @Column(length = 50)
     private String serial;
 
     @Column(name = "edition_no")
     private Integer editionNo;
-
-    @Column(name = "total_supply")
-    private Integer total;
 
 
     @Column(length = 100)

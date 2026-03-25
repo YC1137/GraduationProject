@@ -308,7 +308,7 @@
                               </div>
                               <div class="bubble-content" :style="msg.role === 'user' ? 'text-align: right' : ''">{{ msg.content }}</div>
                               <div class="bubble-user-icon" v-if="msg.role === 'user'">
-                                <el-avatar :src="authStore.currentUser?.avatar || '/logo.png'" :size="26" />
+                                <el-avatar :src="authStore.currentUser?.avatar" :size="26" />
                               </div>
                             </div>
                             <!-- 追问等待动画 -->

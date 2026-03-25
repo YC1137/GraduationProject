@@ -5,7 +5,7 @@
       <!-- 用户信息卡片 -->
       <div class="profile-card">
         <div class="profile-avatar-wrap" @click="triggerAvatarUpload" title="点击更换头像">
-          <el-avatar :src="authStore.currentUser?.avatar || '/logo.png'" :size="80" class="profile-avatar" />
+          <el-avatar :src="authStore.currentUser?.avatar" :size="80" class="profile-avatar" />
           <div class="avatar-overlay">
             <svg viewBox="0 0 24 24" width="20" height="20" fill="#fff">
               <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>

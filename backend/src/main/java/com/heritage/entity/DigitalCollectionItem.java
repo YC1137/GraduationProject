@@ -19,9 +19,6 @@ public class DigitalCollectionItem {
     @Column(nullable = false, length = 100)
     private String name;
 
-    @Column(name = "name_en", length = 100)
-    private String nameEn;
-
     @Column(length = 50)
     private String serial;
 
@@ -60,9 +57,6 @@ public class DigitalCollectionItem {
 
     @Column(length = 50)
     private String countdown;
-
-    @Column(columnDefinition = "TEXT")
-    private String description;
 
     @Column(name = "sort_order")
     private Integer sortOrder = 0;

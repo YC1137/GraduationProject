@@ -45,7 +45,6 @@
       <el-form ref="formRef" :model="form" :rules="rules" label-width="110px">
         <el-row :gutter="16">
           <el-col :span="12"><el-form-item label="名称" prop="name"><el-input v-model="form.name" /></el-form-item></el-col>
-          <el-col :span="12"><el-form-item label="英文名" prop="nameEn"><el-input v-model="form.nameEn" placeholder="如：Dragon Boat Festival NFT" /></el-form-item></el-col>
           <el-col :span="12"><el-form-item label="编号" prop="serial"><el-input v-model="form.serial" /></el-form-item></el-col>
           <el-col :span="12"><el-form-item label="类别" prop="category"><el-input v-model="form.category" /></el-form-item></el-col>
           <el-col :span="12"><el-form-item label="来源" prop="origin"><el-input v-model="form.origin" /></el-form-item></el-col>
@@ -87,7 +86,6 @@ const formRef = ref(null)
 const defaultForm = () => ({
   id: null,
   name: '',
-  nameEn: '',
   serial: '',
   category: '',
   origin: '',

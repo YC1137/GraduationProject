@@ -22,26 +22,17 @@ spring:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.MySQLDialect
+        globally_quoted_identifiers: true
   
   servlet:
     multipart:
       max-file-size: 10MB
       max-request-size: 10MB
 
-  # 全局响应编码 UTF-8
-  mandatory-response-character-encoding: true
-  web:
-    resources:
-      add-mappings: true
-
 server:
   port: 8080
   servlet:
     context-path: /api
-    encoding:
-      charset: UTF-8
-      enabled: true
-      force: true
 
 # JWT 配置
 jwt:
@@ -65,7 +56,3 @@ blockchain:
   receipt-poll-interval-ms: 1500
   receipt-poll-attempts: 80
   platform-private-key: "0xffcdecdded7b291d264d056066515363a780d3baa1e65f5643bb87bd1dee56d8"
-
-# 公网 tokenURI 基础地址（使用 ngrok 时改为 ngrok 的 https 地址）
-app:
-  base-url: https://你的ngrok地址.ngrok-free.app/api

@@ -232,7 +232,7 @@
 // 修正头像 URL：将 localhost 替换为当前访问的实际 hostname，兼容手机端局域网访问
 const fixedAvatar = computed(() => {
   const src = authStore.currentUser?.avatar
-  if (!src) return '/logo.png'
+  if (!src) return ''
   return src.replace(/http:\/\/localhost:/g, `http://${window.location.hostname}:`)
 })
 

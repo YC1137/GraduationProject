@@ -17,7 +17,5 @@ public interface UserDigitalAssetRepository extends JpaRepository<UserDigitalAss
 
     @Query("select a.editionNo from UserDigitalAsset a where a.itemId = :itemId and a.editionNo is not null")
     List<Integer> findEditionNosByItemId(@Param("itemId") Long itemId);
-
-    java.util.Optional<UserDigitalAsset> findByTokenId(String tokenId);
 }
 

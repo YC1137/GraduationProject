@@ -4,28 +4,29 @@
     <section class="hero-section">
       <el-carousel 
         :interval="5000" 
-        height="500px" 
+        height="560px" 
         arrow="hover"
-        indicator-position="outside"
+        indicator-position="inside"
         :autoplay="true"
         :loop="true"
       >
         <el-carousel-item v-for="item in carouselItems" :key="item.id">
-          <div class="carousel-item" :style="{ backgroundImage: `url(${item.thumbnail || 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=1920&q=80'})` }">
-            <div class="carousel-overlay"></div>
-            <div class="carousel-content container">
-              <h2 class="carousel-title fade-in">{{ item.name }}</h2>
-              <p class="carousel-desc fade-in">{{ item.description || '传承千年的文化瑰宝，感受非遗魅力' }}</p>
-              <el-button 
-                type="primary" 
-                size="large" 
-                class="carousel-btn fade-in"
-                @click="goToDetail(item.id)"
-              >
-                了解详情
-                <el-icon class="el-icon--right"><ArrowRight /></el-icon>
-              </el-button>
-            </div>
+          <div
+            class="carousel-item"
+            :class="{ 'carousel-clickable': item.linkUrl }"
+            @click="handleCarouselClick(item)"
+          >
+            <!-- 底层：模糊拉伸填充背景，消除黑边 -->
+            <div
+              class="carousel-bg-blur"
+              :style="{ backgroundImage: `url(${item.imageUrl || 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=1920&q=80'})` }"
+            ></div>
+            <!-- 前景：完整显示图片 -->
+            <img
+              class="carousel-img"
+              :src="item.imageUrl || 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=1920&q=80'"
+              :alt="item.title || ''"
+            />
           </div>
         </el-carousel-item>
       </el-carousel>
@@ -246,6 +247,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import axios from 'axios'
 import { useHeritageStore } from '@/stores/heritage'
 import HeritageCard from '@/components/heritage/HeritageCard.vue'
 import { 
@@ -294,8 +296,28 @@ const notices = ref([
   { id: 7, tag: '公告', type: 'warning', title: '诚邀各地非遗传承人入驻平台，共建数字非遗库', date: '2025-02-25' },
 ])
 
-// 轮播图数据（动态）
+// 轮播图数据（优先从 Banner 接口读取，失败则用非遗项目）
 const carouselItems = ref([])
+
+const loadBanners = async () => {
+  try {
+    const res = await axios.get('http://localhost:8080/api/banner/list')
+    const list = res.data?.data || []
+    if (list.length > 0) {
+      carouselItems.value = list.map(b => ({
+        id: b.id,
+        imageUrl: b.imageUrl,
+        linkUrl: b.linkUrl || null,
+        title: b.title || '',
+        slideInterval: b.interval || 5000
+      }))
+      return true
+    }
+  } catch (e) {
+    // Banner 接口不可用，静默降级
+  }
+  return false
+}
 
 // 分类数据（动态计算）
 const categories = ref([])
@@ -435,6 +457,9 @@ const features = ref([
 
 // 获取热门项目和统计数据
 onMounted(async () => {
+  // 优先从 Banner 管理接口加载轮播图
+  const bannerLoaded = await loadBanners()
+
   try {
     const list = await heritageStore.fetchHeritageList()
     
@@ -458,17 +483,17 @@ onMounted(async () => {
     })
     featuredItems.value = sortedByHot.slice(0, 6)
     
-    // 轮播图：从剩余项目中随机选择3个（避免与热门项目重复，且保持刷新随机性）
-    const remainingList = validList.filter(item => !featuredItems.value.find(f => f.id === item.id))
-    const shuffledRemaining = shuffleArray(remainingList.length >= 3 ? remainingList : validList)
-    
-    // 对轮播图数据进行安全处理
-    carouselItems.value = shuffledRemaining.slice(0, 3).map(item => ({
-      ...item,
-      thumbnail: fixImageUrl(validateImageUrl(item.thumbnail)),
-      name: sanitizeText(item.name || ''),
-      description: sanitizeText(item.description || '')
-    }))
+    // 轮播图：仅当 Banner 接口没有数据时，降级用非遗项目图片
+    if (!bannerLoaded) {
+      const remainingList = validList.filter(item => !featuredItems.value.find(f => f.id === item.id))
+      const shuffledRemaining = shuffleArray(remainingList.length >= 3 ? remainingList : validList)
+      carouselItems.value = shuffledRemaining.slice(0, 3).map(item => ({
+        id: item.id,
+        imageUrl: fixImageUrl(validateImageUrl(item.thumbnail)),
+        linkUrl: `/heritage/${item.id}`,
+        title: sanitizeText(item.name || '')
+      }))
+    }
     
     // 动态计算分类统计
     const categoryIcons = {
@@ -558,6 +583,18 @@ const goToDetail = (id) => {
   }
 }
 
+// 轮播图点击跳转：支持自定义 linkUrl 或降级到详情页
+const handleCarouselClick = (item) => {
+  if (!item.linkUrl) return
+  // 站内路由（/开头）
+  if (item.linkUrl.startsWith('/')) {
+    router.push(item.linkUrl)
+  } else {
+    // 外链
+    window.open(item.linkUrl, '_blank')
+  }
+}
+
 const goToCategory = (type, value) => {
   // 验证type和value
   const validTypes = ['category', 'region', 'level']
@@ -595,11 +632,11 @@ const sidebarAllItems = ref([])
 
 // 轮播图区域
 .hero-section {
-  margin-top: -80px;
+  margin-top: 0px; /* header 高度，避免被遮挡 */
   max-width: 1450px;
   margin-left: auto;
   margin-right: auto;
-  padding: 0 20px;
+  padding: 0;
   
   :deep(.el-carousel) {
     .el-carousel__indicators {
@@ -617,52 +654,48 @@ const sidebarAllItems = ref([])
 .carousel-item {
   width: 100%;
   height: 100%;
-  background-size: cover;
-  background-position: center;
   position: relative;
   display: flex;
   align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+// 底层模糊背景已无需显示
+.carousel-bg-blur {
+  display: none;
+}
+
+// 前景：图片强制填满轮播区域
+.carousel-img {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  display: block;
 }
 
 .carousel-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(
-    to right,
-    rgba(0, 0, 0, 0.6) 0%,
-    rgba(0, 0, 0, 0.3) 50%,
-    transparent 100%
-  );
+  display: none;
 }
 
 .carousel-content {
-  position: relative;
-  z-index: 1;
-  color: #ffffff;
-  max-width: 600px;
+  display: none;
 }
 
 .carousel-title {
-  font-size: 3rem;
-  font-weight: bold;
-  margin-bottom: 20px;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-  animation-delay: 0.2s;
+  display: none;
 }
 
 .carousel-desc {
-  font-size: 1.2rem;
-  margin-bottom: 30px;
-  line-height: 1.8;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
-  animation-delay: 0.4s;
+  display: none;
 }
 
 .carousel-btn {
-  animation-delay: 0.6s;
+  display: none;
 }
 
 // 分类区域
@@ -1049,8 +1082,8 @@ const sidebarAllItems = ref([])
 // 响应式设计
 @media (max-width: 768px) {
   .hero-section {
-    margin-top: -60px;
-    padding: 0 15px;
+    margin-top: 60px; /* 移动端 header 高度 */
+    padding: 0;
     
     :deep(.el-carousel) {
       height: 245px !important; // 350px * 0.7 = 245px

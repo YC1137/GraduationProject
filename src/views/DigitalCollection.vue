@@ -200,7 +200,7 @@
             <div class="mine-rarity-tag" :class="item.rarityClass">{{ item.rarity }}</div>
           </div>
           <div class="mine-card-body">
-            <div class="mine-serial">编号：{{ item.editionNo && item.total ? item.editionNo + '/' + item.total : item.serial }}</div>
+            <div class="mine-serial">份数编号：{{ item.serial }}</div>
 
             <h3 class="mine-name">{{ item.name }}</h3>
             <div class="mine-meta">
@@ -235,7 +235,7 @@
             </div>
             <div class="mint-rarity" :class="mintedItem?.rarityClass">{{ mintedItem?.rarity }}</div>
             <h2 class="mint-name">{{ mintedItem?.name }}</h2>
-            <div class="mint-serial">编号：{{ mintedItem?.editionNo && mintedItem?.total ? mintedItem.editionNo + '/' + mintedItem.total : mintedItem?.serial }}</div>
+            <div class="mint-serial">份数编号：{{ mintedItem?.serial }}</div>
 
             <p class="mint-origin">{{ mintedItem?.origin }}</p>
             <div class="mint-chain" v-if="mintedItem?.onChain">
@@ -282,12 +282,35 @@ const shortAddress = (address) => {
   return `${address.slice(0, 6)}...${address.slice(-4)}`
 }
 
+const buildTokenURI = (item) => {
+  const metadata = {
+    name: item.name,
+    description: `${item.origin} · ${item.category} · ${item.rarity}`,
+    image: item.cover,
+    attributes: [
+      { trait_type: '稀有度', value: item.rarity },
+      { trait_type: '来源', value: item.source === 'quiz' ? '测验获得' : '首发收藏' },
+      { trait_type: '编号', value: item.serial }
+    ]
+  }
+  const json = JSON.stringify(metadata)
+  return `data:application/json;base64,${window.btoa(unescape(encodeURIComponent(json)))}`
+}
+
 const mintOnChainForItem = async (item) => {
+  const tokenUri = buildTokenURI(item)
   return await mintDigitalAsset({
     userId: authStore.currentUser?.userId,
     itemId: item.id,
+    name: item.name,
+    serial: item.serial,
+    origin: item.origin,
+    cover: item.cover,
+    rarity: item.rarity,
+    rarityClass: item.rarityClass,
     source: item.source,
-    ownedAt: new Date().toLocaleDateString('zh-CN')
+    ownedAt: new Date().toLocaleDateString('zh-CN'),
+    tokenUri
   })
 }
 

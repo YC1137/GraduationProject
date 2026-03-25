@@ -1,5 +1,6 @@
 package com.heritage.dto;
 
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
@@ -11,7 +12,23 @@ public class MintDigitalAssetRequest {
     @NotNull(message = "藏品ID不能为空")
     private Long itemId;
 
+    @NotBlank(message = "藏品名称不能为空")
+    private String name;
+
+    private String serial;
+
+    private String origin;
+
+    private String cover;
+
+    private String rarity;
+
+    private String rarityClass;
+
     private String source;
 
     private String ownedAt;
+
+    @NotBlank(message = "tokenURI不能为空")
+    private String tokenUri;
 }

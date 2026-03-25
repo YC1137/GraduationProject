@@ -120,7 +120,7 @@
 
                   <!-- 用户头像（右边） -->
                   <div v-if="msg.role === 'user'" class="msg-avatar user-av">
-                    <el-avatar :src="authStore.currentUser?.avatar || '/logo.png'" :size="36" />
+                    <el-avatar :src="authStore.currentUser?.avatar" :size="36" />
                   </div>
                 </div>
 

@@ -1,27 +1,10 @@
 import request from './request'
-import { mockHeritageData } from './mock'
 
-/**
- * 获取非遗项目列表
- * @param {Object} params - 查询参数
- * @param {string} params.category - 类别
- * @param {string} params.region - 地域
- * @param {string} params.level - 级别
- * @param {string} params.keyword - 关键词
- * @returns {Promise}
- */
 export const getHeritageList = async (params = {}) => {
-    // 对接后端 API
     return request.get('/heritage/list', { params })
 }
 
-/**
- * 获取非遗项目详情
- * @param {string|number} id - 项目ID
- * @returns {Promise}
- */
 export const getHeritageDetail = async (id) => {
-    // 对接后端 API
     return request.get(`/heritage/detail/${id}`)
 }
 
@@ -60,22 +43,7 @@ export const postComment = async (data) => {
         }
     }
     
-    try {
-        console.log('=== 前端发布评论调试信息 ===')
-        console.log('发送的数据:', data)
-        console.log('用户ID:', userId)
-        
-        const response = await request.post('/comment', data, { 
-            params: { userId }
-        })
-        
-        console.log('评论发布成功:', response)
-        return response
-    } catch (error) {
-        console.error('发布评论失败:', error)
-        console.error('错误详情:', error.response?.data)
-        throw error
-    }
+    return request.post('/comment', data, { params: { userId } })
 }
 
 /**

@@ -1,21 +1,8 @@
-import request from './request'
-
-// =============================================
-// TODO: 在下方填入你的 AI API Key 和接口地址
-// =============================================
-
 const AI_API_KEY = 'sk-aewbwctbqsgqfbeeptoguwpvnkaprajjfxoeqpknnpvpqhod'
 const AI_API_URL = 'https://api.siliconflow.cn/v1/chat/completions'
 const AI_MODEL = 'deepseek-ai/DeepSeek-V3'
 
-// =============================================
 
-/**
- * 发送消息到 AI（直接调用第三方 API，不走后端）
- * @param {string} message - 用户输入的消息
- * @param {Array} history - 历史消息记录 [{role: 'user'|'assistant', content: '...'}]
- * @returns {Promise<string>} - AI 回复的文本
- */
 export const sendChatMessage = async (message, history = []) => {
     if (!AI_API_KEY || !AI_API_URL) {
         throw new Error('请先在 src/api/ai.js 中填入 API Key 和接口地址')
@@ -53,14 +40,4 @@ export const sendChatMessage = async (message, history = []) => {
 
     const data = await response.json()
     return data.choices?.[0]?.message?.content || '暂无回复'
-}
-
-/**
- * （备选）通过后端代理调用 AI，避免前端暴露 Key
- * 需要后端在 /api/ai/chat 提供相应接口
- * @param {string} message
- * @param {Array} history
- */
-export const sendChatMessageViaBackend = async (message, history = []) => {
-    return request.post('/ai/chat', { message, history })
 }
