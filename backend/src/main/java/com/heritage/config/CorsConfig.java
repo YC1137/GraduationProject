@@ -19,7 +19,7 @@ public class CorsConfig {
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
         
-        // 开发环境：允许所有来源
+        // 允许所有来源（不使用 withCredentials 时可以用 *）
         config.setAllowedOrigins(Collections.singletonList("*"));
         
         // 允许所有请求头
@@ -28,7 +28,7 @@ public class CorsConfig {
         // 允许所有请求方法
         config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         
-        // 开发环境：禁用凭证（这样就可以使用 * 作为来源）
+        // 不需要携带 cookie，token 通过 Authorization 头传递
         config.setAllowCredentials(false);
         
         // 预检请求的有效期，单位为秒

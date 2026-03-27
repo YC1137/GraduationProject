@@ -101,25 +101,25 @@
             <img :src="form.thumbnail" alt="缩略图预览" />
           </div>
         </el-form-item>
-        <el-form-item label="图片" prop="images">
-          <div class="image-upload-field">
-            <el-input v-model="form.images" type="textarea" :rows="2"
-              placeholder='粘贴URL或JSON数组，如 ["url1","url2"]，也可点击上传' class="url-input" />
-            <el-upload
-              :show-file-list="false"
-              :http-request="(opt) => uploadImage(opt, 'images')"
-              accept="image/*"
-              multiple
-              class="upload-btn"
-            >
-              <el-button type="primary" :loading="uploadingImages">上传图片</el-button>
-            </el-upload>
-          </div>
-          <div v-if="parsedImages.length" class="imgs-preview">
-            <div v-for="(url, idx) in parsedImages" :key="idx" class="img-preview-item">
-              <img :src="url" :alt="'图片' + (idx+1)" />
-              <el-button type="danger" size="small" circle @click="removeImage(idx)">×</el-button>
+        <el-form-item label="图片">
+          <div class="list-editor">
+            <div v-for="(url, idx) in imageList" :key="idx" class="list-editor-row">
+              <div class="row-index">{{ idx + 1 }}</div>
+              <el-input v-model="imageList[idx]" placeholder="输入或粘贴图片URL" class="row-input" />
+              <el-upload
+                :show-file-list="false"
+                :http-request="(opt) => uploadImageToRow(opt, idx)"
+                accept="image/*"
+                class="upload-btn-inline"
+              >
+                <el-button size="small" type="primary" :loading="uploadingImageIdx === idx">上传</el-button>
+              </el-upload>
+              <div v-if="url" class="row-preview">
+                <img :src="url" alt="预览" />
+              </div>
+              <el-button size="small" type="danger" @click="removeImageRow(idx)">删除</el-button>
             </div>
+            <el-button size="small" type="primary" plain @click="addImageRow">+ 添加图片</el-button>
           </div>
         </el-form-item>
         <el-form-item label="视频" prop="video">
@@ -148,8 +148,16 @@
             </a>
           </div>
         </el-form-item>
-        <el-form-item label="时间线" prop="timeline">
-          <el-input v-model="form.timeline" type="textarea" :rows="3" />
+        <el-form-item label="时间线">
+          <div class="list-editor">
+            <div v-for="(_, idx) in timelineList" :key="idx" class="list-editor-row timeline-row">
+              <div class="row-index">{{ idx + 1 }}</div>
+              <el-input v-model="timelineList[idx].year" placeholder="年代" style="width: 120px; flex-shrink: 0;" />
+              <el-input v-model="timelineList[idx].event" placeholder="事件描述" class="row-input" />
+              <el-button size="small" type="danger" @click="removeTimelineRow(idx)">删除</el-button>
+            </div>
+            <el-button size="small" type="primary" plain @click="addTimelineRow">+ 添加时间节点</el-button>
+          </div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -161,7 +169,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import axios from 'axios'
 
@@ -176,8 +184,14 @@ const dialogTitle = ref('')
 const formRef = ref(null)
 const selectedRows = ref([])
 const uploadingThumbnail = ref(false)
-const uploadingImages = ref(false)
 const uploadingSidebarItem = ref(false)
+const uploadingImageIdx = ref(-1)
+
+// 图片列表（逐行编辑）
+const imageList = ref([])
+
+// 时间线列表（逐行编辑）
+const timelineList = ref([])
 
 const form = ref({
   id: null,
@@ -189,62 +203,48 @@ const form = ref({
   description: '',
   detailDescription: '',
   thumbnail: '',
-  images: '',
   video: '',
   audio: '',
-  sidebarImage: '',
-  timeline: ''
+  sidebarImage: ''
 })
 
-// 解析 images 字段为数组（支持 JSON 数组、数组对象、或单个 URL 字符串）
-const parsedImages = computed(() => {
-  const val = form.value.images
-  if (!val) return []
-  // 已经是数组（后端直接返回 List）
-  if (Array.isArray(val)) return val.filter(Boolean)
-  // 字符串：尝试 JSON 解析
-  if (typeof val === 'string') {
-    try {
-      const parsed = JSON.parse(val)
-      if (Array.isArray(parsed)) return parsed.filter(Boolean)
-    } catch (_) {}
-    return val.trim() ? [val.trim()] : []
+// ─── 图片行操作 ──────────────────────────────────────────
+const addImageRow = () => { imageList.value.push('') }
+const removeImageRow = (idx) => { imageList.value.splice(idx, 1) }
+
+const uploadImageToRow = async (options, idx) => {
+  const fd = new FormData()
+  fd.append('file', options.file)
+  uploadingImageIdx.value = idx
+  try {
+    const res = await axios.post(UPLOAD_URL, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+    if (res.data.code === 200) {
+      imageList.value[idx] = res.data.data
+      ElMessage.success('图片上传成功')
+    } else {
+      ElMessage.error(res.data.message || '上传失败')
+    }
+  } catch (e) {
+    ElMessage.error('上传失败：' + (e.message || '网络错误'))
+  } finally {
+    uploadingImageIdx.value = -1
   }
-  return []
-})
-
-// 删除某张图
-const removeImage = (idx) => {
-  const arr = [...parsedImages.value]
-  arr.splice(idx, 1)
-  form.value.images = arr.length ? JSON.stringify(arr) : ''
 }
 
-// 通用上传函数
+// ─── 时间线行操作 ─────────────────────────────────────────
+const addTimelineRow = () => { timelineList.value.push({ year: '', event: '' }) }
+const removeTimelineRow = (idx) => { timelineList.value.splice(idx, 1) }
+
+// 缩略图 / 侧栏图上传
 const uploadImage = async (options, target) => {
-  const file = options.file
   const fd = new FormData()
-  fd.append('file', file)
-
+  fd.append('file', options.file)
   if (target === 'thumbnail') uploadingThumbnail.value = true
-  else if (target === 'sidebarImage') uploadingSidebarItem.value = true
-  else uploadingImages.value = true
-
+  else uploadingSidebarItem.value = true
   try {
-    const res = await axios.post(UPLOAD_URL, fd, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    })
+    const res = await axios.post(UPLOAD_URL, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
     if (res.data.code === 200) {
-      const url = res.data.data
-      if (target === 'thumbnail') {
-        form.value.thumbnail = url
-      } else if (target === 'sidebarImage') {
-        form.value.sidebarImage = url
-      } else {
-        // 追加到 images 数组
-        const arr = [...parsedImages.value, url]
-        form.value.images = JSON.stringify(arr)
-      }
+      form.value[target] = res.data.data
       ElMessage.success('图片上传成功')
     } else {
       ElMessage.error(res.data.message || '上传失败')
@@ -253,9 +253,24 @@ const uploadImage = async (options, target) => {
     ElMessage.error('上传失败：' + (e.message || '网络错误'))
   } finally {
     if (target === 'thumbnail') uploadingThumbnail.value = false
-    else if (target === 'sidebarImage') uploadingSidebarItem.value = false
-    else uploadingImages.value = false
+    else uploadingSidebarItem.value = false
   }
+}
+
+// 解析 images 字段为数组
+const parseImages = (val) => {
+  if (!val) return []
+  if (Array.isArray(val)) return val.filter(Boolean)
+  try { const p = JSON.parse(val); if (Array.isArray(p)) return p.filter(Boolean) } catch (_) {}
+  return val.trim() ? [val.trim()] : []
+}
+
+// 解析 timeline 字段为数组
+const parseTimeline = (val) => {
+  if (!val) return []
+  if (Array.isArray(val)) return val.filter(v => v.year || v.event)
+  try { const p = JSON.parse(val); if (Array.isArray(p)) return p } catch (_) {}
+  return []
 }
 
 const rules = {
@@ -292,23 +307,25 @@ const handleAdd = () => {
     description: '',
     detailDescription: '',
     thumbnail: '',
-    images: '',
     video: '',
     audio: '',
-    sidebarImage: '',
-    timeline: ''
+    sidebarImage: ''
   }
+  imageList.value = []
+  timelineList.value = []
   dialogVisible.value = true
 }
 
 const handleEdit = (row) => {
   dialogTitle.value = '编辑非遗项目'
   const data = { ...row }
-  // 后端返回的 images 可能是数组，统一转成 JSON 字符串
-  if (Array.isArray(data.images)) {
-    data.images = JSON.stringify(data.images)
-  }
-  form.value = data
+  // images 和 timeline 单独用 imageList/timelineList 管理，从 form 中移除
+  const { images, timeline, ...rest } = data
+  form.value = rest
+  imageList.value = parseImages(images)
+  timelineList.value = parseTimeline(timeline).length
+    ? parseTimeline(timeline)
+    : []
   dialogVisible.value = true
 }
 
@@ -316,13 +333,10 @@ const confirmSave = async () => {
   try {
     await formRef.value.validate()
 
-    // 确保数组类型字段序列化为 JSON 字符串再提交
-    const payload = { ...form.value }
-    if (Array.isArray(payload.images)) {
-      payload.images = JSON.stringify(payload.images)
-    }
-    if (Array.isArray(payload.timeline)) {
-      payload.timeline = JSON.stringify(payload.timeline)
+    const payload = {
+      ...form.value,
+      images: JSON.stringify(imageList.value.filter(Boolean)),
+      timeline: JSON.stringify(timelineList.value.filter(v => v.year || v.event))
     }
 
     let response
@@ -466,9 +480,12 @@ const handleToggleEnabled = (row) => {
   ).then(async () => {
     loading.value = true
     try {
-      const payload = { ...row, enabled: newEnabled }
-      if (Array.isArray(payload.images))   payload.images   = JSON.stringify(payload.images)
-      if (Array.isArray(payload.timeline)) payload.timeline = JSON.stringify(payload.timeline)
+    const payload = {
+      ...row,
+      enabled: newEnabled,
+      images: Array.isArray(row.images) ? JSON.stringify(row.images) : (row.images || '[]'),
+      timeline: Array.isArray(row.timeline) ? JSON.stringify(row.timeline) : (row.timeline || '[]')
+    }
       const response = await axios.put(`http://localhost:8080/api/admin/heritage/${row.id}`, payload)
       
       if (response.data.code === 200) {
@@ -556,30 +573,60 @@ onMounted(() => {
   }
 }
 
-.imgs-preview {
+/* 行式列表编辑器 */
+.list-editor {
+  width: 100%;
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.list-editor-row {
+  display: flex;
+  align-items: center;
   gap: 8px;
-  margin-top: 8px;
-  .img-preview-item {
-    position: relative;
+  width: 100%;
+  padding: 6px 10px;
+  background: #f9fafc;
+  border: 1px solid #ebeef5;
+  border-radius: 6px;
+  transition: border-color 0.2s;
+
+  &:hover {
+    border-color: #c0c4cc;
+  }
+
+  .row-index {
+    width: 20px;
+    flex-shrink: 0;
+    text-align: center;
+    color: #fff;
+    background: #409eff;
+    border-radius: 50%;
+    font-size: 11px;
+    line-height: 20px;
+    height: 20px;
+    font-weight: bold;
+  }
+
+  .row-input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .upload-btn-inline {
+    flex-shrink: 0;
+  }
+
+  .row-preview {
+    flex-shrink: 0;
     img {
-      width: 80px;
-      height: 60px;
+      width: 60px;
+      height: 45px;
+      object-fit: cover;
       border: 1px solid #dcdfe6;
       border-radius: 4px;
-      object-fit: cover;
       display: block;
-    }
-    .el-button {
-      position: absolute;
-      top: -6px;
-      right: -6px;
-      width: 18px;
-      height: 18px;
-      font-size: 12px;
-      padding: 0;
-      line-height: 1;
     }
   }
 }

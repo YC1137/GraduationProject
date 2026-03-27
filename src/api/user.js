@@ -1,17 +1,20 @@
 import request from './request'
+import { rsaEncrypt } from '@/utils/crypto'
 
 /**
- * 用户登录
+ * 用户登录（密码用服务端RSA公钥加密后传输）
  */
 export const login = async (username, password) => {
-    return request.post('/user/login', { username, password })
+    const encryptedPassword = await rsaEncrypt(password)
+    return request.post('/user/login', { username, encryptedPassword })
 }
 
 /**
- * 用户注册
+ * 用户注册（密码用服务端RSA公钥加密后传输）
  */
 export const register = async (username, password, email) => {
-    return request.post('/user/register', { username, password, email })
+    const encryptedPassword = await rsaEncrypt(password)
+    return request.post('/user/register', { username, encryptedPassword, email })
 }
 
 /**

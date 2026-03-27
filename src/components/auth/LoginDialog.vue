@@ -220,9 +220,13 @@
   // 提交表单
   const handleSubmit = async () => {
     if (!formRef.value) return
-    
-    const valid = await formRef.value.validate()
-    if (!valid) return
+
+    // validate() 验证失败时会 throw，需要 try-catch 捕获
+    try {
+      await formRef.value.validate()
+    } catch {
+      return  // 表单校验不通过，element-plus 已自动显示错误提示
+    }
 
     // 验证码校验（不区分大小写）
     if (inputCode.value.trim().toLowerCase() !== realCode.value.toLowerCase()) {

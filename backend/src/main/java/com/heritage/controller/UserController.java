@@ -7,7 +7,11 @@ import com.heritage.dto.RegisterRequest;
 import com.heritage.entity.User;
 import com.heritage.service.HeritageService;
 import com.heritage.service.UserService;
+import com.heritage.util.RsaKeyService;
+
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -37,22 +41,38 @@ public class UserController {
     
     private final UserService userService;
     private final HeritageService heritageService;
+    private final RsaKeyService rsaKeyService;
+
+    /**
+     * 获取RSA公钥（前端加密密码用）
+     */
+    @GetMapping("/public-key")
+    public ApiResponse<String> getPublicKey() {
+        return ApiResponse.success(rsaKeyService.getPublicKeyBase64());
+    }
     
     /**
      * 用户注册
      */
     @PostMapping("/register")
-    public ApiResponse<Map<String, Object>> register(@Valid @RequestBody RegisterRequest request) {
+    public ApiResponse<Map<String, Object>> register(@RequestBody RegisterRequest request) {
         try {
-            User user = userService.register(request.getUsername(), request.getPassword(), request.getEmail());
-            
+            String username = request.getUsername();
+            // 如果前端传了加密密码(encryptedPassword)则解密，否则用明文password
+            String password = request.getEncryptedPassword() != null
+                    ? rsaKeyService.decrypt(request.getEncryptedPassword())
+                    : request.getPassword();
+            String email = request.getEmail();
+
+            User user = userService.register(username, password, email);
+
             Map<String, Object> data = new HashMap<>();
             data.put("userId", user.getId());
             data.put("username", user.getUsername());
             data.put("email", user.getEmail());
             data.put("avatar", user.getAvatar());
             data.put("walletAddress", user.getWalletAddress());
-            
+
             return ApiResponse.success("注册成功", data);
         } catch (RuntimeException e) {
             return ApiResponse.error(e.getMessage());
@@ -63,18 +83,47 @@ public class UserController {
      * 用户登录
      */
     @PostMapping("/login")
-    public ApiResponse<Map<String, Object>> login(@Valid @RequestBody LoginRequest request) {
+    public ApiResponse<Map<String, Object>> login(@RequestBody LoginRequest request, HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
         try {
-            User user = userService.login(request.getUsername(), request.getPassword());
-            
+            String username = request.getUsername();
+            // 如果前端传了加密密码(encryptedPassword)则解密，否则用明文password
+            String password = request.getEncryptedPassword() != null
+                    ? rsaKeyService.decrypt(request.getEncryptedPassword())
+                    : request.getPassword();
+
+            if (username == null || username.trim().isEmpty()) {
+                return ApiResponse.error("用户名不能为空");
+            }
+            if (password == null || password.trim().isEmpty()) {
+                return ApiResponse.error("密码不能为空");
+            }
+
+            Map<String, Object> result = userService.login(username, password);
+            User user = (User) result.get("user");
+            String token = (String) result.get("token");
+
             Map<String, Object> data = new HashMap<>();
             data.put("userId", user.getId());
             data.put("username", user.getUsername());
             data.put("email", user.getEmail());
             data.put("avatar", user.getAvatar());
             data.put("walletAddress", user.getWalletAddress());
-            data.put("token", "mock-token-" + user.getId()); // 简化版token
-            
+            data.put("token", token);
+
+            // 设置Cookie
+            Cookie cookie = new Cookie("token", token);
+            cookie.setPath("/");
+            cookie.setHttpOnly(true);
+            cookie.setMaxAge(24 * 60 * 60);
+            String hostHeader = httpRequest.getHeader("Host");
+            if (hostHeader != null && hostHeader.contains(":")) {
+                String domain = hostHeader.substring(0, hostHeader.indexOf(":"));
+                cookie.setDomain(domain);
+            } else if (hostHeader != null) {
+                cookie.setDomain(hostHeader);
+            }
+            httpResponse.addCookie(cookie);
+
             return ApiResponse.success("登录成功", data);
         } catch (RuntimeException e) {
             return ApiResponse.error(e.getMessage());

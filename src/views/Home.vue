@@ -1,64 +1,161 @@
 <template>
   <div class="home-page ink-wash-bg">
-    <!-- 轮播图区域 -->
-    <section class="hero-section">
-      <el-carousel 
-        :interval="5000" 
-        height="560px" 
-        arrow="hover"
-        indicator-position="inside"
-        :autoplay="true"
-        :loop="true"
-      >
-        <el-carousel-item v-for="item in carouselItems" :key="item.id">
-          <div
-            class="carousel-item"
-            :class="{ 'carousel-clickable': item.linkUrl }"
-            @click="handleCarouselClick(item)"
-          >
-            <!-- 底层：模糊拉伸填充背景，消除黑边 -->
+    <!-- 轮播图 + 公告栏横向布局 -->
+    <section class="hero-wrapper container">
+      <!-- 左侧：轮播图 -->
+      <div class="hero-carousel-area">
+        <el-carousel 
+          :interval="5000" 
+          height="460px" 
+          arrow="hover"
+          indicator-position="inside"
+          :autoplay="true"
+          :loop="true"
+        >
+          <el-carousel-item v-for="item in carouselItems" :key="item.id">
             <div
-              class="carousel-bg-blur"
-              :style="{ backgroundImage: `url(${item.imageUrl || 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=1920&q=80'})` }"
-            ></div>
-            <!-- 前景：完整显示图片 -->
-            <img
-              class="carousel-img"
-              :src="item.imageUrl || 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=1920&q=80'"
-              :alt="item.title || ''"
-            />
+              class="carousel-item"
+              :class="{ 'carousel-clickable': item.linkUrl }"
+              @click="handleCarouselClick(item)"
+            >
+              <!-- 底层：模糊拉伸填充背景，消除黑边 -->
+              <div
+                class="carousel-bg-blur"
+                :style="{ backgroundImage: `url(${item.imageUrl || 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=1920&q=80'})` }"
+              ></div>
+              <!-- 前景：完整显示图片 -->
+              <img
+                class="carousel-img"
+                :src="item.imageUrl || 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=1920&q=80'"
+                :alt="item.title || ''"
+              />
+            </div>
+          </el-carousel-item>
+        </el-carousel>
+      </div>
+
+      <!-- 右侧：书签式快捷导航 -->
+      <div class="quick-nav-sidebar">
+        <div class="bookmark-list">
+
+          <div class="bookmark-item bookmark-quiz" @click="$router.push('/quiz')">
+            <div class="bookmark-tab">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 2.38 1.19 4.47 3 5.74V17h8v-2.26A7 7 0 0 0 19 9c0-3.87-3.13-7-7-7zM9 21h6v-2H9v2zm2-6h2v-2.08A5 5 0 0 0 7 9a5 5 0 0 0 5-5 5 5 0 0 0 5 5 5.002 5.002 0 0 0-3.99 4.92H11v.08z" fill="currentColor"/>
+                <circle cx="12" cy="9" r="3" fill="currentColor" opacity="0.5"/>
+              </svg>
+            </div>
+            <div class="bookmark-body">
+              <span class="bookmark-title">知识测验</span>
+              <span class="bookmark-desc">挑战非遗知识，测测你知多少</span>
+            </div>
+            <div class="bookmark-corner"></div>
           </div>
-        </el-carousel-item>
-      </el-carousel>
+
+          <div class="bookmark-item bookmark-ai" @click="$router.push('/ai-chat')">
+            <div class="bookmark-tab">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z" fill="currentColor"/>
+              </svg>
+            </div>
+            <div class="bookmark-body">
+              <span class="bookmark-title">AI 问答</span>
+              <span class="bookmark-desc">智能助手解答非遗相关问题</span>
+            </div>
+            <div class="bookmark-corner"></div>
+          </div>
+
+          <div class="bookmark-item bookmark-map" @click="$router.push('/category?tab=region')">
+            <div class="bookmark-tab">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5S13.38 11.5 12 11.5z" fill="currentColor"/>
+              </svg>
+            </div>
+            <div class="bookmark-body">
+              <span class="bookmark-title">非遗地图</span>
+              <span class="bookmark-desc">探索各地非遗项目的地域分布</span>
+            </div>
+            <div class="bookmark-corner"></div>
+          </div>
+
+          <div class="bookmark-item bookmark-collection" @click="$router.push('/digital-collection')">
+            <div class="bookmark-tab">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" fill="currentColor"/>
+              </svg>
+            </div>
+            <div class="bookmark-body">
+              <span class="bookmark-title">数字藏品</span>
+              <span class="bookmark-desc">珍稀非遗文物数字化收藏展览</span>
+            </div>
+            <div class="bookmark-corner"></div>
+          </div>
+
+          <div class="bookmark-item bookmark-bomb" @click="$router.push('/bomb')">
+            <div class="bookmark-tab">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="11" cy="13" r="7" fill="currentColor" opacity="0.9"/>
+                <path d="M14 6.5l2-3M16 6l2.5-1.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                <circle cx="18.5" cy="4" r="1.5" fill="currentColor" opacity="0.7"/>
+              </svg>
+            </div>
+            <div class="bookmark-body">
+              <span class="bookmark-title">非遗炸弹 <span class="bookmark-badge">NEW</span></span>
+              <span class="bookmark-desc">逼 AI 说出秘密项目名，5次机会</span>
+            </div>
+            <div class="bookmark-corner"></div>
+          </div>
+
+        </div>
+      </div>
     </section>
 
     <!-- 横向滚动图片带 -->
     <template v-if="sidebarAllItems.length">
       <div class="marquee-section">
-        <div class="marquee-row">
-          <div class="marquee-track marquee-left">
-            <div
-              v-for="item in sidebarAllItems"
-              :key="'m1-' + item._fillIdx"
-              class="marquee-item"
-              @click="goToDetail(item.id)"
-            >
-              <img :src="item.sidebarImage" :alt="item.name" />
-            </div>
-            <div
-              v-for="item in sidebarAllItems"
-              :key="'m1c-' + item._fillIdx"
-              class="marquee-item"
-              @click="goToDetail(item.id)"
-            >
-              <img :src="item.sidebarImage" :alt="item.name" />
+        <div class="marquee-label">
+          <span class="marquee-label-line"></span>
+          <span class="marquee-label-text">非遗风采</span>
+          <span class="marquee-label-line"></span>
+        </div>
+        <div class="marquee-stage">
+          <div class="marquee-fade marquee-fade-left"></div>
+          <div class="marquee-fade marquee-fade-right"></div>
+          <div class="marquee-row">
+            <div class="marquee-track">
+              <div
+                v-for="item in sidebarAllItems"
+                :key="'m1-' + item._fillIdx"
+                class="marquee-item"
+                @click="goToDetail(item.id)"
+              >
+                <div class="marquee-card">
+                  <img :src="item.sidebarImage" :alt="item.name" />
+                  <div class="marquee-card-overlay">
+                    <span class="marquee-card-name">{{ item.name }}</span>
+                  </div>
+                </div>
+              </div>
+              <div
+                v-for="item in sidebarAllItems"
+                :key="'m1c-' + item._fillIdx"
+                class="marquee-item"
+                @click="goToDetail(item.id)"
+              >
+                <div class="marquee-card">
+                  <img :src="item.sidebarImage" :alt="item.name" />
+                  <div class="marquee-card-overlay">
+                    <span class="marquee-card-name">{{ item.name }}</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </template>
 
-    <!-- 热门项目 + 公告栏 -->
+    <!-- 热门项目 -->
     <section class="featured-section container">
       <div class="featured-layout">
         <!-- 左侧：热门项目 -->
@@ -81,69 +178,9 @@
             </el-button>
           </div>
         </div>
-
-        <!-- 右侧：快捷导航 + 公告栏 -->
-        <div class="notice-board">
-          <!-- 快捷导航框 -->
-          <div class="quick-nav-grid">
-            <div class="quick-nav-card" @click="$router.push('/quiz')">
-              <div class="qnc-icon qnc-quiz">
-                <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <rect x="6" y="6" width="36" height="36" rx="6" fill="currentColor" opacity="0.15"/>
-                  <path d="M24 14c-3.86 0-7 3.14-7 7 0 2.5 1.32 4.7 3.3 5.97V30h7.4v-3.03A7 7 0 0 0 31 21c0-3.86-3.14-7-7-7zm-1.5 20h3v3h-3v-3z" fill="currentColor"/>
-                </svg>
-              </div>
-              <div class="qnc-body">
-                <span class="qnc-title">知识测验</span>
-                <span class="qnc-desc">挑战非遗知识，测测你知多少</span>
-              </div>
-              <el-icon class="qnc-arrow"><ArrowRight /></el-icon>
-            </div>
-
-            <div class="quick-nav-card" @click="$router.push('/ai-chat')">
-              <div class="qnc-icon qnc-ai">
-                <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <rect x="6" y="6" width="36" height="36" rx="6" fill="currentColor" opacity="0.15"/>
-                  <path d="M34 14H14a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4l3 4 3-4h10a2 2 0 0 0 2-2V16a2 2 0 0 0-2-2zm-13 9h-4v-2h4v2zm8 0h-6v-2h6v2zm0-4H18v-2h11v2z" fill="currentColor"/>
-                </svg>
-              </div>
-              <div class="qnc-body">
-                <span class="qnc-title">AI 问答</span>
-                <span class="qnc-desc">智能助手解答非遗相关问题</span>
-              </div>
-              <el-icon class="qnc-arrow"><ArrowRight /></el-icon>
-            </div>
-
-            <div class="quick-nav-card" @click="$router.push('/digital-collection')">
-              <div class="qnc-icon qnc-collection">
-                <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <rect x="6" y="6" width="36" height="36" rx="6" fill="currentColor" opacity="0.15"/>
-                  <path d="M36 12H12a2 2 0 0 0-2 2v20a2 2 0 0 0 2 2h24a2 2 0 0 0 2-2V14a2 2 0 0 0-2-2zm-12 3l3 6h-6l3-6zm-8 15l4-5 3 3.5 4-5.5 5 7H10l6-6.5.5.5-.5 0z" fill="currentColor"/>
-                </svg>
-              </div>
-              <div class="qnc-body">
-                <span class="qnc-title">数字藏品</span>
-                <span class="qnc-desc">珍稀非遗文物数字化收藏展览</span>
-              </div>
-              <el-icon class="qnc-arrow"><ArrowRight /></el-icon>
-            </div>
-
-            <div class="quick-nav-card" @click="$router.push('/heritage-map')">
-              <div class="qnc-icon qnc-map">
-                <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <rect x="6" y="6" width="36" height="36" rx="6" fill="currentColor" opacity="0.15"/>
-                  <path d="M24 10c-5.52 0-10 4.48-10 10 0 7.5 10 18 10 18s10-10.5 10-18c0-5.52-4.48-10-10-10zm0 13a3 3 0 1 1 0-6 3 3 0 0 1 0 6z" fill="currentColor"/>
-                </svg>
-              </div>
-              <div class="qnc-body">
-                <span class="qnc-title">非遗地图</span>
-                <span class="qnc-desc">探索各地非遗项目的地域分布</span>
-              </div>
-              <el-icon class="qnc-arrow"><ArrowRight /></el-icon>
-            </div>
-          </div>
-
-          <!-- 公告栏 -->
+        <!-- 右侧：公告栏 -->
+        <div class="notice-board notice-board-featured">
+          <h3 class="notice-board-title">平台公告</h3>
           <div class="notice-list">
             <div class="notice-item" v-for="notice in notices" :key="notice.id">
               <div class="notice-tag" :class="notice.type">{{ notice.tag }}</div>
@@ -184,19 +221,13 @@
           </el-tab-pane>
           
           <el-tab-pane label="按地域" name="region">
-            <div class="category-grid">
-              <div 
-                v-for="region in regions" 
-                :key="region.name"
-                class="category-card region-card"
-                @click="goToCategory('region', region.name)"
-              >
-                <div class="region-art-text">
-                  <span class="chinese">{{ region.name }}</span>
-                  <span class="pinyin">{{ region.fullPinyin }}</span>
-                </div>
-                <p class="category-count">{{ region.count }} 个项目</p>
-              </div>
+            <div class="region-map-container">
+              <ChinaMap
+                ref="homeMapRef"
+                v-model="homeMapRegion"
+                :region-count-map="geoRegionCountMap"
+                @change="handleRegionMapSelect"
+              />
             </div>
           </el-tab-pane>
           
@@ -245,11 +276,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { useHeritageStore } from '@/stores/heritage'
 import HeritageCard from '@/components/heritage/HeritageCard.vue'
+import ChinaMap from '@/components/common/ChinaMap.vue'
 import { 
   Picture, 
   Film, 
@@ -615,8 +647,46 @@ const goToCategory = (type, value) => {
   }
 }
 
-const handleTabClick = () => {
-  // 处理标签页切换
+// 后端简称 → GeoJSON全名（与 ChinaMap 保持一致）
+const REGION_NAME_MAP = {
+  '北京': '北京市', '天津': '天津市', '上海': '上海市', '重庆': '重庆市',
+  '河北': '河北省', '山西': '山西省', '辽宁': '辽宁省', '吉林': '吉林省',
+  '黑龙江': '黑龙江省', '江苏': '江苏省', '浙江': '浙江省', '安徽': '安徽省',
+  '福建': '福建省', '江西': '江西省', '山东': '山东省', '河南': '河南省',
+  '湖北': '湖北省', '湖南': '湖南省', '广东': '广东省', '海南': '海南省',
+  '四川': '四川省', '贵州': '贵州省', '云南': '云南省', '陕西': '陕西省',
+  '甘肃': '甘肃省', '青海': '青海省', '台湾': '台湾省',
+  '内蒙古': '内蒙古自治区', '广西': '广西壮族自治区', '西藏': '西藏自治区',
+  '宁夏': '宁夏回族自治区', '新疆': '新疆维吾尔自治区',
+  '香港': '香港特别行政区', '澳门': '澳门特别行政区',
+}
+
+// 地图热力数据（GeoJSON全名 → 数量）
+const geoRegionCountMap = computed(() => {
+  const map = {}
+  regions.value.forEach(r => {
+    const fullName = REGION_NAME_MAP[r.name] || r.name
+    map[fullName] = r.count
+  })
+  return map
+})
+
+// 当前选中的地域（仅用于地图高亮，不影响其他筛选）
+const homeMapRegion = ref('')
+const homeMapRef = ref(null)
+
+const handleRegionMapSelect = (regionShort) => {
+  if (regionShort) {
+    goToCategory('region', regionShort)
+  }
+}
+
+const handleTabClick = (tab) => {
+  if ((tab.paneName ?? tab?.props?.name) === 'region') {
+    nextTick(() => {
+      homeMapRef.value?.resize()
+    })
+  }
 }
 
 // 侧栏图项目列表
@@ -630,15 +700,40 @@ const sidebarAllItems = ref([])
 
 }
 
+// 轮播图 + 快捷导航横向区域
+.hero-wrapper {
+  padding: 0 0 10px;
+  display: flex;
+  gap: 20px;
+  align-items: stretch;
+}
+
+.hero-carousel-area {
+  flex: 1 1 0;
+  min-width: 0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+// 轮播图右侧：快捷导航侧栏
+.quick-nav-sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
 // 轮播图区域
 .hero-section {
-  margin-top: 0px; /* header 高度，避免被遮挡 */
-  max-width: 1450px;
-  margin-left: auto;
-  margin-right: auto;
-  padding: 0;
+  margin-top: 0px; 
+  height: 100%;
   
   :deep(.el-carousel) {
+    height: 100% !important;
+    .el-carousel__container {
+      height: 460px !important;
+    }
     .el-carousel__indicators {
       .el-carousel__button {
         background-color: rgba(200, 48, 43, 0.5);
@@ -737,6 +832,13 @@ const sidebarAllItems = ref([])
     font-size: 16px;
     font-weight: 500;
   }
+}
+
+.region-map-container {
+  background: #fff;
+  border: 1px solid #e8dfc5;
+  border-radius: 10px;
+  padding: 10px 14px 8px;
 }
 
 .category-grid {
@@ -851,84 +953,125 @@ const sidebarAllItems = ref([])
   color: var(--text-secondary);
 }
 
-// 快捷导航框
-.quick-nav-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  margin-bottom: 24px;
+// 书签式快捷导航
+.bookmark-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+  justify-content: center;
 }
 
-.quick-nav-card {
+.bookmark-item {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 18px 16px;
-  background: #fff;
-  border-radius: 12px;
-  border: 1px solid rgba(0,0,0,0.07);
-  box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+  gap: 0;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
-  overflow: hidden;
+  border-radius: 0 10px 10px 0;
+  overflow: visible;
+  transition: transform 0.22s cubic-bezier(.34,1.56,.64,1), box-shadow 0.2s;
+  box-shadow: 2px 4px 14px rgba(0,0,0,0.10);
 
   &:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-    border-color: var(--primary-color);
+    transform: translateX(6px);
+    box-shadow: 4px 8px 24px rgba(0,0,0,0.18);
 
-    .qnc-arrow {
+    .bookmark-corner {
       opacity: 1;
-      transform: translateX(3px);
     }
   }
 }
 
-.qnc-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 10px;
+// 左侧彩色书签标签（折角竖条）
+.bookmark-tab {
+  width: 52px;
+  min-width: 52px;
+  align-self: stretch;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
+  border-radius: 6px 0 0 6px;
+  padding: 10px 0;
 
   svg {
-    width: 30px;
-    height: 30px;
+    width: 26px;
+    height: 26px;
+    color: #fff;
   }
-
-  &.qnc-quiz       { color: #e67e22; background: rgba(230,126,34,0.1); }
-  &.qnc-ai         { color: #8e44ad; background: rgba(142,68,173,0.1); }
-  &.qnc-collection { color: #c0392b; background: rgba(192,57,43,0.1); }
-  &.qnc-map        { color: #27ae60; background: rgba(39,174,96,0.1); }
 }
 
-.qnc-body {
+// 主体内容区
+.bookmark-body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  min-width: 0;
+  justify-content: center;
+  gap: 4px;
+  padding: 14px 16px 14px 14px;
+  background: #fff;
+  border-radius: 0 10px 10px 0;
+  border-top: 1px solid rgba(0,0,0,0.06);
+  border-right: 1px solid rgba(0,0,0,0.06);
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  min-height: 68px;
 }
 
-.qnc-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  white-space: nowrap;
-}
-
-.qnc-desc {
-  font-size: 0.75rem;
-  color: var(--text-light);
-}
-
-.qnc-arrow {
-  color: var(--text-light);
+// 右上角折角装饰
+.bookmark-corner {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 16px 16px 0;
+  border-color: transparent rgba(0,0,0,0.06) transparent transparent;
+  border-radius: 0 10px 0 0;
   opacity: 0;
-  transition: opacity 0.2s, transform 0.2s;
-  flex-shrink: 0;
+  transition: opacity 0.2s;
+}
+
+.bookmark-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.bookmark-desc {
+  font-size: 0.72rem;
+  color: var(--text-light);
+  line-height: 1.5;
+}
+
+// 各书签颜色
+.bookmark-quiz .bookmark-tab       { background: linear-gradient(160deg, #f39c12, #e67e22); }
+.bookmark-ai .bookmark-tab         { background: linear-gradient(160deg, #9b59b6, #8e44ad); }
+.bookmark-map .bookmark-tab        { background: linear-gradient(160deg, #2ecc71, #27ae60); }
+.bookmark-collection .bookmark-tab { background: linear-gradient(160deg, #e74c3c, #c0392b); }
+.bookmark-bomb .bookmark-tab       { background: linear-gradient(160deg, #2c3e50, #1a1a2e); }
+
+// hover 时主体顶部边框变色呼应
+.bookmark-quiz:hover .bookmark-body       { border-top-color: #e67e22; border-left: 2px solid #e67e22; }
+.bookmark-ai:hover .bookmark-body         { border-top-color: #8e44ad; border-left: 2px solid #8e44ad; }
+.bookmark-map:hover .bookmark-body        { border-top-color: #27ae60; border-left: 2px solid #27ae60; }
+.bookmark-collection:hover .bookmark-body { border-top-color: #c0392b; border-left: 2px solid #c0392b; }
+.bookmark-bomb:hover .bookmark-body       { border-top-color: #2c3e50; border-left: 2px solid #2c3e50; }
+
+// NEW 徽章
+.bookmark-badge {
+  display: inline-block;
+  font-size: 0.6rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #ff6b35, #f7c59f);
+  color: #fff;
+  padding: 1px 5px;
+  border-radius: 4px;
+  vertical-align: middle;
+  margin-left: 4px;
+  letter-spacing: 0.5px;
 }
 
 // 热门项目
@@ -938,13 +1081,28 @@ const sidebarAllItems = ref([])
 
 .featured-layout {
   display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 36px;
+  grid-template-columns: 1fr 300px;
+  gap: 24px;
   align-items: start;
 }
 
 .featured-main {
   min-width: 0;
+}
+
+// 热门项目右侧公告栏
+.notice-board-featured {
+  position: sticky;
+  top: 80px;
+}
+
+.notice-board-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 4px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--primary-color);
 }
 
 .heritage-grid {
@@ -963,11 +1121,9 @@ const sidebarAllItems = ref([])
 .notice-board {
   background: #fff;
   border-radius: 16px;
-  padding: 28px 24px;
+  padding: 24px 20px;
   box-shadow: var(--shadow-sm);
   border: 1px solid rgba(0,0,0,.06);
-  position: sticky;
-  top: 80px;
 }
 
 .notice-list {
@@ -1212,40 +1368,56 @@ const sidebarAllItems = ref([])
     }
   }
   
-  // 快捷导航框（手机端已随 notice-board 折叠到下方，保持 2 列）
-  .quick-nav-grid {
-    gap: 10px;
-    margin-bottom: 16px;
+  // 书签导航（手机端）
+  .bookmark-list {
+    gap: 8px;
+    justify-content: flex-start;
   }
 
-  .quick-nav-card {
-    padding: 12px 10px;
-    gap: 10px;
+  .bookmark-tab {
+    width: 42px;
+    min-width: 42px;
+    svg { width: 20px; height: 20px; }
   }
 
-  .qnc-icon {
-    width: 38px;
-    height: 38px;
-    svg { width: 22px; height: 22px; }
+  .bookmark-body {
+    min-height: 56px;
+    padding: 10px 12px 10px 12px;
   }
 
-  .qnc-title { font-size: 0.85rem; }
-  .qnc-desc  { display: none; }
-  .qnc-arrow { display: none; }
+  .bookmark-title { font-size: 0.9rem; }
+  .bookmark-desc  { display: none; }
+
+
 
   // 热门项目
   .featured-section {
     padding: 30px 0;
   }
 
-  .featured-layout {
-    grid-template-columns: 1fr;
+  .hero-wrapper {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .quick-nav-sidebar {
+    width: 100%;
+    justify-content: flex-start;
   }
 
   .notice-board {
     position: static;
   }
-  
+
+  .featured-layout {
+    display: block;
+  }
+
+  .notice-board-featured {
+    position: static;
+    margin-top: 24px;
+  }
+
   .heritage-grid {
     grid-template-columns: 1fr;
     gap: 15px; // 减少间距
@@ -1348,8 +1520,63 @@ const sidebarAllItems = ref([])
 
 .marquee-section {
   width: 100%;
+  padding: 32px 0 28px;
+  background: linear-gradient(135deg, #fdf6ee 0%, #f5ede0 50%, #fdf6ee 100%);
+  border-top: 1px solid rgba(192,57,43,0.1);
+  border-bottom: 1px solid rgba(192,57,43,0.1);
+}
+
+// 标题行
+.marquee-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.marquee-label-text {
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 6px;
+  color: #c0392b;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.marquee-label-line {
+  flex: 1;
+  max-width: 120px;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(192,57,43,0.35));
+
+  &:last-child {
+    background: linear-gradient(to left, transparent, rgba(192,57,43,0.35));
+  }
+}
+
+// 滚动舞台（含渐变遮罩）
+.marquee-stage {
+  position: relative;
   overflow: hidden;
-  padding: 10px 0;
+}
+
+.marquee-fade {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 80px;
+  z-index: 2;
+  pointer-events: none;
+
+  &.marquee-fade-left {
+    left: 0;
+    background: linear-gradient(to right, #fdf6ee, transparent);
+  }
+  &.marquee-fade-right {
+    right: 0;
+    background: linear-gradient(to left, #fdf6ee, transparent);
+  }
 }
 
 .marquee-row {
@@ -1360,10 +1587,11 @@ const sidebarAllItems = ref([])
 .marquee-track {
   display: flex;
   flex-direction: row;
-  gap: 8px;
+  gap: 12px;
   will-change: transform;
   width: max-content;
-  animation: marqueeLeft 60s linear infinite;
+  animation: marqueeLeft 50s linear infinite;
+  padding: 8px 0 12px;
 
   &:hover {
     animation-play-state: paused;
@@ -1373,31 +1601,69 @@ const sidebarAllItems = ref([])
 .marquee-item {
   cursor: pointer;
   flex-shrink: 0;
+}
+
+.marquee-card {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+  transition: transform 0.28s cubic-bezier(.34,1.56,.64,1), box-shadow 0.25s;
 
   img {
-    width: 80px;
-    height: 72px;
+    width: 110px;
+    height: 90px;
     object-fit: cover;
     display: block;
-    border-radius: 6px;
-    filter:
-      drop-shadow(0 0 1px rgba(0,0,0,0.4))
-      drop-shadow(0 2px 4px rgba(0,0,0,0.15));
-    transition: transform 0.2s;
+    transition: transform 0.35s ease;
   }
 
-  &:hover img {
-    transform: scale(1.08);
+  &:hover {
+    transform: translateY(-6px) scale(1.04);
+    box-shadow: 0 12px 28px rgba(0,0,0,0.22);
+
+    img { transform: scale(1.08); }
+
+    .marquee-card-overlay { opacity: 1; }
   }
+}
+
+// 悬浮名称遮罩
+.marquee-card-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.65) 0%, transparent 55%);
+  display: flex;
+  align-items: flex-end;
+  padding: 8px 7px;
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+
+.marquee-card-name {
+  font-size: 0.68rem;
+  color: #fff;
+  font-weight: 600;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 @media (max-width: 768px) {
   .marquee-section {
-    padding: 6px 0;
+    padding: 20px 0 16px;
   }
-  .marquee-item img {
-    width: 60px;
-    height: 54px;
+
+  .marquee-card img {
+    width: 80px;
+    height: 68px;
+  }
+
+  .marquee-fade {
+    width: 40px;
   }
 }
 </style>

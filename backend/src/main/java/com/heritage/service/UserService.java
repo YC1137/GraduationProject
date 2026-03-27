@@ -6,14 +6,18 @@ import com.heritage.entity.UserLike;
 import com.heritage.repository.UserFavoriteRepository;
 import com.heritage.repository.UserLikeRepository;
 import com.heritage.repository.UserRepository;
+import com.heritage.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.web3j.crypto.ECKeyPair;
 import org.web3j.crypto.Keys;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -27,6 +31,8 @@ public class UserService {
     private final UserFavoriteRepository userFavoriteRepository;
     private final UserLikeRepository userLikeRepository;
     private final HeritageService heritageService;
+    
+    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     
     /**
      * 用户注册
@@ -42,7 +48,7 @@ public class UserService {
         
         User user = new User();
         user.setUsername(username);
-        user.setPassword(password); // 实际项目应该加密
+        user.setPassword(passwordEncoder.encode(password)); // BCrypt加密
         user.setEmail((email != null && !email.isBlank()) ? email : null);
         user.setAvatar(String.format("https://ui-avatars.com/api/?name=%s&background=c8302b&color=fff", username));
         user.setWalletAddress(generateWalletAddress());
@@ -52,24 +58,33 @@ public class UserService {
     }
     
     /**
-     * 用户登录
+     * 用户登录 - 返回token
      */
     @Transactional
-    public User login(String username, String password) {
-        User user = userRepository.findByUsername(username)
+    public Map<String, Object> login(String username, String password) {
+        String normalizedUsername = username == null ? null : username.trim();
+        String normalizedPassword = password == null ? null : password.trim();
+
+        User user = userRepository.findByUsername(normalizedUsername)
             .orElseThrow(() -> new RuntimeException("用户名或密码错误"));
-        
-        if (!user.getPassword().equals(password)) {
+
+        if (!passwordEncoder.matches(normalizedPassword, user.getPassword())) {
             throw new RuntimeException("用户名或密码错误");
         }
-        
+
         user.setLastLoginTime(LocalDateTime.now());
         if (user.getWalletAddress() == null || user.getWalletAddress().isBlank()) {
             user.setWalletAddress(generateWalletAddress());
         }
         userRepository.save(user);
-        
-        return user;
+
+        String token = JwtUtil.generateToken(user.getId(), user.getUsername());
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("user", user);
+        result.put("token", token);
+
+        return result;
     }
     
     /**

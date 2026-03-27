@@ -33,52 +33,6 @@
       </div>
     </section>
 
-    <!-- ===== 获取途径说明 ===== -->
-    <section class="dc-how container">
-      <h2 class="dc-section-title">如何获得藏品</h2>
-      <div class="dc-how-grid">
-        <div class="dc-how-card" @click="$router.push('/quiz')">
-          <div class="dc-how-icon quiz-icon">
-            <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="24" cy="24" r="20" fill="currentColor" opacity="0.12"/>
-              <path d="M24 14c-3.86 0-7 3.14-7 7 0 2.5 1.32 4.7 3.3 5.97V30h7.4v-3.03A7 7 0 0 0 31 21c0-3.86-3.14-7-7-7zm-1.5 20h3v3h-3v-3z" fill="currentColor"/>
-            </svg>
-          </div>
-          <div class="dc-how-body">
-            <div class="dc-how-badge quiz-badge">答题铸造</div>
-            <h3>完成知识测验</h3>
-            <p>答对题目获得铸造积分，积分达到阈值即可铸造对应稀有度藏品</p>
-            <div class="dc-how-rewards">
-              <span class="reward-tag common">60分+ → 普通</span>
-              <span class="reward-tag rare">80分+ → 稀有</span>
-              <span class="reward-tag epic">90分+ → 史诗</span>
-              <span class="reward-tag legendary">满分 → 传奇</span>
-            </div>
-          </div>
-          <div class="dc-how-arrow">去答题 →</div>
-        </div>
-
-        <div class="dc-how-card" @click="scrollTo('market')">
-          <div class="dc-how-icon drop-icon">
-            <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="24" cy="24" r="20" fill="currentColor" opacity="0.12"/>
-              <path d="M32 20l-8-8-8 8v2h3v10h10V22h3v-2zm-9 10v-6h2v6h-2z" fill="currentColor"/>
-            </svg>
-          </div>
-          <div class="dc-how-body">
-            <div class="dc-how-badge drop-badge">首发限量</div>
-            <h3>首发限量抢购</h3>
-            <p>定期发售限量版非遗主题数字藏品，每次首发仅有少量名额，先到先得</p>
-            <div class="dc-how-rewards">
-              <span class="reward-tag epic">限量珍藏</span>
-              <span class="reward-tag legendary">联名款</span>
-            </div>
-          </div>
-          <div class="dc-how-arrow">去抢购 →</div>
-        </div>
-      </div>
-    </section>
-
     <!-- ===== 藏品首发市场 ===== -->
     <section class="dc-market container" id="market">
       <div class="dc-section-header">

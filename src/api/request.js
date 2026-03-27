@@ -1,12 +1,32 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 
+/**
+ * 从 Cookie 中读取 token
+ */
+const getTokenFromCookie = () => {
+    const cookies = document.cookie.split(';')
+    for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim()
+        if (cookie.startsWith('token=')) {
+            return cookie.substring('token='.length)
+        }
+    }
+    return null
+}
+
+/**
+ * 获取 token（优先从 localStorage，如果没有则从 cookie）
+ */
+const getToken = () => {
+    return localStorage.getItem('token') || getTokenFromCookie()
+}
+
 // 创建 axios 实例
 const request = axios.create({
-    // 动态获取当前访问的主机名，解决手机端访问时 localhost 指向错误的问题
-    baseURL: import.meta.env.VITE_API_BASE_URL?.includes('localhost') 
-        ? `http://${window.location.hostname}:8080/api`
-        : (import.meta.env.VITE_API_BASE_URL || `http://${window.location.hostname}:8080/api`),
+    // 后端服务器地址 - 固定使用 yichengjiang:8080
+    // 如果需要修改为其他地址，请更改下面这行
+    baseURL: 'http://yichengjiang:8080/api',
     timeout: 10000,
     headers: {
         'Content-Type': 'application/json'
@@ -16,11 +36,21 @@ const request = axios.create({
 // 请求拦截器
 request.interceptors.request.use(
     config => {
-        // 可以在这里添加 token 等认证信息
-        const token = localStorage.getItem('token')
+        // 优先从 localStorage 获取 token，如果没有则从 cookie 获取
+        const token = getToken()
         if (token) {
             config.headers.Authorization = `Bearer ${token}`
         }
+        
+        // 打印登录请求的详细信息
+        if (config.url?.includes('/user/login') || config.url?.includes('/user/register')) {
+            console.log('=== 请求拦截器 ===')
+            console.log('请求URL:', config.url)
+            console.log('请求数据:', config.data)
+            console.log('请求头:', config.headers)
+            console.log('=== 请求拦截器结束 ===')
+        }
+        
         return config
     },
     error => {
@@ -33,6 +63,8 @@ request.interceptors.request.use(
 request.interceptors.response.use(
     response => {
         console.log('Response interceptor - status:', response.status, 'data:', response.data)
+        console.log('Response config URL:', response.config.url)
+        console.log('Response request data:', response.config.data)
         
         // 后端返回格式: { code: 200, message: "success", data: ... }
         const res = response.data

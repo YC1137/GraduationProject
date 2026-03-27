@@ -567,36 +567,17 @@ const loadingRankings = ref(false)
           console.log('options 原始数据:', item.options)
           console.log('options 类型:', typeof item.options)
           
-          // 如果 options 已经是数组,直接使用;否则解析 JSON
+          // 如果 options 已经是数组,直接使用;否则解析
           let options = item.options
           if (typeof options === 'string') {
             options = options.trim()
-            try {
-              options = JSON.parse(options)
-            } catch (e) {
-              console.error('解析 options 失败:', options, e)
-              // 尝试修复：处理可能的双重引号或多余内容
-              try {
-                // 如果字符串被包裹在额外的引号中
-                if (options.startsWith('"') && options.endsWith('"')) {
-                  options = JSON.parse(options)
-                  if (typeof options === 'string') {
-                    options = JSON.parse(options)
-                  }
-                } else {
-                  // 尝试提取第一个完整的 JSON 数组或对象
-                  const match = options.match(/(\[.*\]|\{.*\})/s)
-                  if (match) {
-                    options = JSON.parse(match[1])
-                  } else {
-                    // 如果还是不行，按逗号分隔
-                    options = options.split(/[,,，，]/).map(s => s.trim()).filter(Boolean)
-                  }
-                }
-              } catch (e2) {
-                console.error('修复 options 失败:', e2)
-                options = []
-              }
+            // 先尝试 JSON 解析（格式如 ["A.xx","B.xx",...]）
+            if (options.startsWith('[')) {
+              try { options = JSON.parse(options) } catch (e) { options = null }
+            }
+            // 非 JSON 格式：按中英文逗号分隔（如 "A. 惊蛰,B. 雨水,C. 春分,D. 立春"）
+            if (!Array.isArray(options)) {
+              options = options.split(/[,，]+/).map(s => s.trim()).filter(Boolean)
             }
           }
           

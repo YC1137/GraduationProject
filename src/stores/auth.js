@@ -38,6 +38,9 @@ export const useAuthStore = defineStore('auth', () => {
             isLoggedIn.value = true
             localStorage.setItem('currentUser', JSON.stringify(currentUser.value))
             localStorage.setItem('token', response.token)
+            // 同时写入 cookie（7天有效期），兼容需要 cookie 的场景
+            const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString()
+            document.cookie = `token=${response.token}; expires=${expires}; path=/; SameSite=Lax`
             ElMessage.success('登录成功')
             return true
         } catch (error) {
@@ -55,6 +58,7 @@ export const useAuthStore = defineStore('auth', () => {
             // 注册成功后自动登录
             return await login(userData)
         } catch (error) {
+            console.error('[auth] register error:', error)
             // 错误消息已在 request.js 中统一弹出，这里不再重复显示
             return false
         }
@@ -66,6 +70,8 @@ export const useAuthStore = defineStore('auth', () => {
         isLoggedIn.value = false
         localStorage.removeItem('currentUser')
         localStorage.removeItem('token')
+        // 清除 cookie
+        document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
         ElMessage.success('已退出登录')
     }
 

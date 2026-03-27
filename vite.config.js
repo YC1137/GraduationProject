@@ -12,18 +12,27 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    host: '0.0.0.0', // 允许局域网访问
+    host: '0.0.0.0',
     open: true,
-    cors: true // 允许跨域
-  },
-  build: {
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          'element-plus': ['element-plus'],
-          'vue-vendor': ['vue', 'vue-router', 'pinia']
-        }
+    cors: true,
+    allowedHosts: true,
+    proxy: {
+      // AI 接口代理：/ai-proxy/... → https://api.siliconflow.cn/...
+      '/ai-proxy': {
+        target: 'https://api.siliconflow.cn',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/ai-proxy/, '')
       }
     }
+  },
+  build: {
+    // rollupOptions: {
+    //   output: {
+    //     manualChunks: {
+    //       'element-plus': ['element-plus'],
+    //       'vue-vendor': ['vue', 'vue-router', 'pinia']
+    //     }
+    //   }
+    // }
   }
 })

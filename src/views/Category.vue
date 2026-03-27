@@ -25,36 +25,16 @@
           </div>
         </div>
 
-        <div class="filter-row">
-          <div class="filter-item region-filter-item">
-            <label class="filter-label">城市：</label>
-            <div class="region-filter">
-              <el-radio-group v-model="filters.region" @change="handleRegionRadioChange">
-                <el-radio-button value="">全部</el-radio-button>
-                <el-radio-button 
-                  v-for="region in topRegions" 
-                  :key="region.name" 
-                  :value="region.name"
-                >
-                  {{ region.name }} ({{ region.count }})
-                </el-radio-button>
-              </el-radio-group>
-              <el-select 
-                v-if="otherRegions.length > 0"
-                v-model="selectRegion" 
-                placeholder="更多城市"
-                clearable
-                @change="handleSelectChange"
-                @clear="handleSelectClear"
-                class="more-regions-select"
-              >
-                <el-option
-                  v-for="region in otherRegions"
-                  :key="region.name"
-                  :label="`${region.name} (${region.count})`"
-                  :value="region.name"
-                />
-              </el-select>
+        <!-- 地域筛选：地图 + 下拉 -->
+        <div class="filter-row region-map-row">
+          <div class="filter-item region-map-item">
+            <label class="filter-label">地域：</label>
+            <div class="region-map-wrap">
+              <ChinaMap
+                v-model="filters.region"
+                :region-count-map="geoRegionCountMap"
+                @change="handleRegionMapChange"
+              />
             </div>
           </div>
         </div>
@@ -128,19 +108,17 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useHeritageStore } from '@/stores/heritage'
 import HeritageCard from '@/components/heritage/HeritageCard.vue'
+import ChinaMap from '@/components/common/ChinaMap.vue'
 
 const route = useRoute()
 const heritageStore = useHeritageStore()
 
 const loading = ref(false)
 const filteredList = ref([])
-
-// 下拉框单独的绑定值
-const selectRegion = ref('')
 
 // 筛选条件
 const filters = reactive({
@@ -153,18 +131,22 @@ const filters = reactive({
 const categories = heritageStore.categories
 const levels = heritageStore.levels
 
-// 地域统计数据
-const regionStats = ref([])
+// 地域统计数据（key=GeoJSON全名，供地图组件使用）
+const geoRegionCountMap = ref({})
 
-// 热门地域（项目数最多的前5个）
-const topRegions = computed(() => {
-  return regionStats.value.slice(0, 5)
-})
-
-// 其他地域
-const otherRegions = computed(() => {
-  return regionStats.value.slice(5)
-})
+// 后端简称 → GeoJSON全名（与 ChinaMap 保持一致）
+const REGION_NAME_MAP = {
+  '北京': '北京市', '天津': '天津市', '上海': '上海市', '重庆': '重庆市',
+  '河北': '河北省', '山西': '山西省', '辽宁': '辽宁省', '吉林': '吉林省',
+  '黑龙江': '黑龙江省', '江苏': '江苏省', '浙江': '浙江省', '安徽': '安徽省',
+  '福建': '福建省', '江西': '江西省', '山东': '山东省', '河南': '河南省',
+  '湖北': '湖北省', '湖南': '湖南省', '广东': '广东省', '海南': '海南省',
+  '四川': '四川省', '贵州': '贵州省', '云南': '云南省', '陕西': '陕西省',
+  '甘肃': '甘肃省', '青海': '青海省', '台湾': '台湾省',
+  '内蒙古': '内蒙古自治区', '广西': '广西壮族自治区', '西藏': '西藏自治区',
+  '宁夏': '宁夏回族自治区', '新疆': '新疆维吾尔自治区',
+  '香港': '香港特别行政区', '澳门': '澳门特别行政区',
+}
 
 // 初始化筛选条件（从 URL 参数获取）
 const initFilters = () => {
@@ -172,24 +154,19 @@ const initFilters = () => {
   filters.region = route.query.region || ''
   filters.level = route.query.level || ''
   filters.keyword = route.query.keyword || ''
-  
-  // 如果初始地域在其他地域列表中，设置下拉框的值
-  if (filters.region && otherRegions.value.some(r => r.name === filters.region)) {
-    selectRegion.value = filters.region
-  }
 }
 
   // 获取项目列表
   const fetchList = async () => {
     loading.value = true
     try {
-      // 根据当前的类别和级别筛选条件获取数据用于城市统计（不包含城市和关键词）
+      // 先获取不含地区筛选的数据用于热力图统计
       const statsParams = {
         category: filters.category,
         level: filters.level
       }
       const statsData = await heritageStore.fetchHeritageList(statsParams)
-      calculateRegionStats(statsData)
+      buildGeoCountMap(statsData)
       
       // 再根据完整筛选条件获取数据
       const params = {
@@ -207,49 +184,31 @@ const initFilters = () => {
     }
   }
   
-  // 计算城市统计（基于当前类别和级别筛选条件）
-  const calculateRegionStats = (list) => {
-    const regionCount = {}
+  // 将后端简称统计转为 GeoJSON 全名 map 供地图热力使用
+  const buildGeoCountMap = (list) => {
+    const countMap = {}
     list.forEach(item => {
-      regionCount[item.region] = (regionCount[item.region] || 0) + 1
+      if (item.region) {
+        const fullName = REGION_NAME_MAP[item.region] || item.region
+        countMap[fullName] = (countMap[fullName] || 0) + 1
+      }
     })
-    
-    // 转换为数组并按数量降序排序
-    regionStats.value = Object.keys(regionCount)
-      .map(name => ({ name, count: regionCount[name] }))
-      .sort((a, b) => b.count - a.count)
+    geoRegionCountMap.value = countMap
   }
 
-// 处理类别或级别变化（需要重置城市选择并重新计算城市统计）
+// 处理类别或级别变化
 const handleCategoryOrLevelChange = () => {
   filters.region = ''
-  selectRegion.value = ''
   fetchList()
 }
 
-// 处理关键词搜索变化（不重置城市选择）
+// 处理关键词搜索变化
 const handleKeywordChange = () => {
   fetchList()
 }
 
-// 处理 Radio 按钮变化（热门城市）
-const handleRegionRadioChange = () => {
-  // 当点击热门城市时，清空下拉框的值
-  selectRegion.value = ''
-  fetchList()
-}
-
-// 处理下拉框变化（其他城市）
-const handleSelectChange = (value) => {
-  // 当选择下拉框中的城市时，更新 filters.region
-  filters.region = value
-  fetchList()
-}
-
-// 处理下拉框清空
-const handleSelectClear = () => {
-  filters.region = ''
-  selectRegion.value = ''
+// 处理地图/下拉选择地区变化
+const handleRegionMapChange = () => {
   fetchList()
 }
 
@@ -259,7 +218,6 @@ const resetFilters = () => {
   filters.region = ''
   filters.level = ''
   filters.keyword = ''
-  selectRegion.value = ''
   fetchList()
 }
 
@@ -348,6 +306,28 @@ onMounted(() => {
   .more-regions-select {
     width: 160px;
   }
+}
+
+// 地图筛选行
+.region-map-row {
+  margin-bottom: 10px;
+}
+
+.region-map-item {
+  align-items: flex-start !important;
+  gap: 12px !important;
+
+  .filter-label {
+    padding-top: 6px;
+  }
+}
+
+.region-map-wrap {
+  flex: 1;
+  background: #fff;
+  border: 1px solid #e8dfc5;
+  border-radius: 10px;
+  padding: 10px 14px 8px;
 }
 
 .filter-label {

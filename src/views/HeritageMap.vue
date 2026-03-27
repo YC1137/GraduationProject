@@ -353,9 +353,6 @@ onMounted(async () => {
   await loadAllRegionCounts()
 })
 
-
-
-
 // ── 分类统计（从后端数据动态计算） ──────────────────────
 const CATEGORY_COLORS = {
   '传统技艺': '#e67e22',

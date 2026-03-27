@@ -57,6 +57,12 @@ const routes = [
         name: 'HeritageMap',
         component: () => import('../views/HeritageMap.vue'),
         meta: { title: '非遗地图' }
+    },
+    {
+        path: '/bomb',
+        name: 'HeritageBomb',
+        component: () => import('../views/HeritageBomb.vue'),
+        meta: { title: '非遗炸弹', requiresAuth: true }
     }
 ]
 
@@ -80,7 +86,8 @@ router.beforeEach((to, from, next) => {
     if (to.meta.requiresAuth) {
         const authStore = useAuthStore()
         if (!authStore.isLoggedIn) {
-            ElMessage.warning('请先登录后再进行答题')
+            const msg = to.name === 'HeritageBomb' ? '请先登录后再来挑战非遗炸弹' : '请先登录后再进行答题'
+            ElMessage.warning(msg)
             next('/')
             return
         }

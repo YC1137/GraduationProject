@@ -6,10 +6,9 @@
           <!-- Logo 和标题 -->
           <div class="logo-section" @click="goHome">
             <img src="@/img/logo.png" alt="logo" class="logo-icon" />
-            <div class="logo-text">
-              <h1 class="site-title">遗见</h1>
-              <p class="site-slogan">百闻不如遗见</p>
-            </div>
+            <h1 class="site-title">遗见</h1>
+            <div class="logo-divider"></div>
+            <p class="site-slogan">百闻不如遗见</p>
           </div>
           
           <!-- 移动端菜单按钮 -->
@@ -345,18 +344,19 @@ const fixedAvatar = computed(() => {
   }
   
   .header-top {
-    height: 80px;
+    height: 72px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 30px;
+    gap: 20px;
   }
   
   .logo-section {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     cursor: pointer;
+    flex-shrink: 0;
     transition: var(--transition);
     
     &:hover {
@@ -365,8 +365,8 @@ const fixedAvatar = computed(() => {
   }
   
   .logo-icon {
-    width: 50px;
-    height: 50px;
+    width: 58px;
+    height: 58px;
     border-radius: 8px;
     object-fit: contain;
     flex-shrink: 0;
@@ -375,48 +375,65 @@ const fixedAvatar = computed(() => {
   .logo-text {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 1px;
   }
 
   .site-title {
-    font-size: 1.6rem;
+    font-size: 3.2rem;
     font-weight: 400;
-    font-family: 'ZCOOL XiaoWei', 'Ma Shan Zheng', serif;
+    font-family: 'Ma Shan Zheng', serif;
     color: var(--text-primary);
     margin: 0;
-    letter-spacing: 4px;
+    padding: 0;
+    line-height: 1;
+    letter-spacing: 6px;
     white-space: nowrap;
+    flex-shrink: 0;
+    vertical-align: middle;
+  }
+
+  .logo-divider {
+    width: 1px;
+    height: 28px;
+    background: rgba(0,0,0,0.18);
+    margin: 0 10px;
+    flex-shrink: 0;
+    align-self: center;
   }
 
   .site-slogan {
-    font-size: 1rem;
-    color: #000;
+    font-size: 2.5rem;
+    font-weight: 400;
+    color: #444;
     margin: 0;
-    font-family: 'STLiti', '隶书', 'LiSu', 'Ma Shan Zheng', serif;
-    width: 100%;
-    text-align: justify;
-    text-align-last: justify;
+    padding: 0;
+    line-height: 1;
+    font-family: 'Zhi Mang Xing', serif;
+    white-space: nowrap;
+    letter-spacing: 2px;
+    vertical-align: middle;
   }
   
   .desktop-actions {
     display: flex;
     align-items: center;
-    gap: 30px;
+    gap: 12px;
     flex: 1;
+    justify-content: flex-end;
   }
   
   .nav-menu {
     display: flex;
-    gap: 30px;
+    gap: 4px;
   }
   
   .nav-item {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 8px 16px;
+    gap: 5px;
+    padding: 7px 12px;
     color: var(--text-primary);
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 500;
     border-radius: 6px;
     transition: var(--transition);
@@ -434,18 +451,23 @@ const fixedAvatar = computed(() => {
   }
   
   .search-box {
-    flex: 1;
-    max-width: 300px;
+    flex: 0 0 auto;
+    width: 200px;
     
     :deep(.el-input__wrapper) {
       border-radius: 20px;
+      padding: 0 12px;
+    }
+
+    :deep(.el-input__inner) {
+      font-size: 13px;
     }
   }
   
   .user-section {
     display: flex;
     align-items: center;
-    margin-left: 20px;
+    flex-shrink: 0;
   }
   
   .auth-buttons {
@@ -803,7 +825,16 @@ const fixedAvatar = computed(() => {
     }
     
     .site-title {
-      font-size: 1.1rem;
+      font-size: 1.2rem;
+      letter-spacing: 4px;
+    }
+
+    .site-slogan {
+      display: none;
+    }
+
+    .logo-divider {
+      display: none;
     }
     
     .desktop-actions {

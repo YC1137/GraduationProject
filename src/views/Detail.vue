@@ -192,7 +192,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useHeritageStore } from '@/stores/heritage'
 import { ElMessage } from 'element-plus'
-import { View, Picture } from '@element-plus/icons-vue'
+import { View, Picture, Star, Collection } from '@element-plus/icons-vue'
 import CommentSection from '@/components/heritage/CommentSection.vue'
 import ActionButtons from '@/components/heritage/ActionButtons.vue'
   
