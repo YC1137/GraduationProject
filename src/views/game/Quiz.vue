@@ -1,4 +1,4 @@
-<template>
+﻿<template>
     <div class="quiz-page">
       <div class="container">
         <!-- 开始页面 -->
@@ -10,7 +10,7 @@
             <h1 class="quiz-title">非遗知识测验</h1>
             
             <!-- 专题选择 -->
-            <div class="topic-selection" v-if="!loading && topics.length > 0">
+            <div class="topic-selection" v-if="topics.length > 0">
               <h3>选择测验专题：</h3>
               <el-radio-group v-model="selectedTopic" size="large" class="topic-radio-group">
                 <el-radio-button value="">全部专题</el-radio-button>
@@ -18,23 +18,28 @@
                   v-for="topic in topics" 
                   :key="topic" 
                   :value="topic"
+                  class="topic-btn-with-reward"
+                  :class="{ 'has-nft-reward': topicHasReward[topic] }"
                 >
                   {{ topic }}
+                  <span v-if="topicHasReward[topic]" class="nft-reward-badge">
+                    <el-icon><Present /></el-icon>
+                    NFT
+                  </span>
                 </el-radio-button>
               </el-radio-group>
             </div>
-            
-            <p class="quiz-desc" v-if="!loading && questions.length > 0">
-              <span v-if="selectedTopic">{{ selectedTopic }}专题 - </span>
-              共 {{ questions.length }} 道题目，每题 {{ pointsPerQuestion }} 分
-            </p>
-            <p class="quiz-desc" v-if="loading">
-              正在加载题目，请稍候...
+            <p class="quiz-desc" v-if="questions.length > 0 || loading">
+              <template v-if="!loading && questions.length > 0">
+                <span v-if="selectedTopic">{{ selectedTopic }}专题 - </span>
+                共 {{ questions.length }} 道题目，每题 {{ pointsPerQuestion }} 分
+              </template>
+              <template v-else>正在加载题目...</template>
             </p>
             <p class="quiz-desc" v-if="!loading && questions.length === 0">
               暂无题目数据
             </p>
-            <div class="quiz-rules" v-if="!loading && questions.length > 0">
+            <div class="quiz-rules" v-if="topics.length > 0">
               <h3>测验规则：</h3>
               <ul>
                 <li>每道题只有一个正确答案</li>
@@ -57,7 +62,7 @@
           </div>
 
           <!-- 新增：开始页面的排行榜展示 -->
-          <div class="start-rankings" v-if="!loading && questions.length > 0">
+          <div class="start-rankings" v-if="topics.length > 0">
             <div class="rankings-header">
               <h3><el-icon><Trophy /></el-icon> {{ selectedTopic || '全站' }}排行榜</h3>
               <el-radio-group v-model="rankingType" @change="switchRankingType" size="small">
@@ -382,12 +387,83 @@
               </el-button>
             </div>
 
-            <!-- 铸造藏品入口 -->
-            <div class="mint-entry" v-if="accuracy >= 60">
+            <!-- 成就证书区域 -->
+            <div class="cert-section">
+              <div class="cert-section-header">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
+                <span>专属学习证书</span>
+              </div>
+              <p class="cert-section-sub">根据你的答题成绩自动生成，可保存留念或分享</p>
+
+              <!-- 证书预览画布 -->
+              <div class="cert-preview-wrap">
+                <canvas ref="certCanvas" class="cert-canvas" width="900" height="520"></canvas>
+              </div>
+
+              <div class="cert-actions">
+                <el-button type="primary" size="large" class="cert-download-btn" @click="downloadCert" :loading="certGenerating">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="margin-right:6px"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                  保存证书图片
+                </el-button>
+              </div>
+            </div>
+
+            <!-- 答题奖励藏品领取区：满分时显示 -->
+            <div class="reward-section" v-if="isPerfectScore">
+              <div class="reward-header">
+                <div class="reward-title-row">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                  <span>🎉 恭喜满分！你已获得铸造藏品的资格</span>
+                </div>
+                <p class="reward-sub">答对全部题目解锁此奖励，限量发行，领取后永久收藏于你的数字藏品库</p>
+              </div>
+
+              <!-- 加载中 -->
+              <div v-if="rewardLoading" class="reward-loading">查询奖励中...</div>
+
+              <!-- 无可领取藏品 -->
+              <div v-else-if="rewardItems.length === 0" class="reward-empty">
+                暂无与该专题绑定的专属藏品，请前往<el-button type="primary" link @click="goMintCollection">藏品领取页</el-button>查看可解锁藏品
+              </div>
+
+              <!-- 藏品卡片列表 -->
+              <div v-else class="reward-list">
+                <div
+                  v-for="item in rewardItems"
+                  :key="item.id"
+                  class="reward-card"
+                  :class="item.rarityClass"
+                  :style="item.glowColor ? { '--glow': item.glowColor } : {}"
+                >
+                  <div class="reward-card-img">
+                    <img :src="item.cover" :alt="item.name" />
+                    <span class="reward-rarity-badge" :class="item.rarityClass">{{ item.rarity }}</span>
+                  </div>
+                  <div class="reward-card-info">
+                    <div class="reward-card-name">{{ item.name }}</div>
+                    <div class="reward-card-serial">{{ item.serial }}</div>
+                    <div class="reward-card-left">剩余 {{ item.left }} / {{ item.total }} 份</div>
+                    <el-button
+                      type="primary"
+                      size="small"
+                      class="reward-claim-btn"
+                      :loading="claimingId === item.id"
+                      :disabled="claimedIds.includes(item.id) || item.left <= 0"
+                      @click="claimReward(item)"
+                    >
+                      {{ claimedIds.includes(item.id) ? '已领取' : item.left <= 0 ? '已领完' : '立即领取' }}
+                    </el-button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 非满分但达到60分：铸造入口 -->
+            <div class="mint-entry" v-else-if="!isPerfectScore && accuracy >= 60">
               <div class="mint-entry-tip">
-                <span class="mint-tip-icon">🎴</span>
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" style="flex-shrink:0"><path d="M20 6h-2.18c.07-.44.18-.88.18-1.36C18 2.51 15.48 0 12.36 0c-1.7 0-3.21.81-4.19 2.07L12 7 6.45 2.07C5.47.81 3.96 0 2.27 0 -.85 0-2.37 2.51-2.37 4.64c0 .48.1.92.18 1.36H-4v14h24V6z"/></svg>
                 <div>
-                  <strong>恭喜！你的成绩符合铸造条件</strong>
+                  <strong>成绩符合铸造条件</strong>
                   <p>正确率 {{ accuracy }}%，可铸造
                     <span :class="mintRarityClass">{{ mintRarityLabel }}</span>
                     级数字藏品
@@ -395,7 +471,7 @@
                 </div>
               </div>
               <el-button type="warning" size="large" class="mint-btn" @click="goMintCollection">
-                🏆 立即铸造藏品
+                立即铸造藏品
               </el-button>
             </div>
           </div>
@@ -406,8 +482,9 @@
   
 <script setup>
 import { ref, computed, onMounted, watch, onBeforeUnmount } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { getQuizQuestions, getQuizTopics, getQuestionsByTopic, submitQuizRecord, getTopRankings, getTopicRanking } from '@/api/quiz'
+import { getCollectionByScore, mintDigitalAsset, getDigitalCollectionList } from '@/api/digitalAsset'
 import { useAuthStore } from '@/stores/auth'
 import { ElMessage, ElLoading } from 'element-plus'
 import {
@@ -423,7 +500,8 @@ import {
   RefreshRight,
   HomeFilled,
   Timer,
-  ChatDotRound
+  ChatDotRound,
+  Present
 } from '@element-plus/icons-vue'
 import { sendChatMessage } from '@/api/ai'
 
@@ -501,6 +579,7 @@ const askAI = async (item) => {
 }
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 
 const questions = ref([])
@@ -514,6 +593,20 @@ const selectedAnswer = ref(null)
 const showAnswer = ref(false)
 const pointsPerQuestion = 10
 const loading = ref(false)
+
+// 数字藏品列表（用于判断哪些专题有藏品奖励）
+const allCollections = ref([])
+
+// 判断某个专题是否有绑定的数字藏品奖励
+const topicHasReward = computed(() => {
+  const map = {}
+  allCollections.value.forEach(item => {
+    if (item.topicName) {
+      map[item.topicName] = true
+    }
+  })
+  return map
+})
 
 // 计时器相关
 const startTime = ref(null)
@@ -540,14 +633,8 @@ const loadingRankings = ref(false)
   
   // 加载题目数据
   const loadQuestions = async () => {
-    let loadingInstance = null
     try {
       loading.value = true
-      loadingInstance = ElLoading.service({
-        lock: true,
-        text: '正在加载题目...',
-        background: 'rgba(0, 0, 0, 0.7)'
-      })
       
       let data
       if (selectedTopic.value) {
@@ -557,17 +644,12 @@ const loadingRankings = ref(false)
         // 加载所有题目
         data = await getQuizQuestions()
       }
-      
-      console.log('获取到的题目数据:', data)
-      
+
       if (data && Array.isArray(data)) {
         // 将后端数据转换为前端格式
         questions.value = data.map(item => {
-          console.log('处理题目:', item.question)
-          console.log('options 原始数据:', item.options)
-          console.log('options 类型:', typeof item.options)
-          
           // 如果 options 已经是数组,直接使用;否则解析
+
           let options = item.options
           if (typeof options === 'string') {
             options = options.trim()
@@ -592,9 +674,6 @@ const loadingRankings = ref(false)
         
         if (questions.value.length === 0) {
           ElMessage.warning('该专题暂无题目')
-        } else {
-          const topicInfo = selectedTopic.value ? `${selectedTopic.value}专题` : '全部'
-          ElMessage.success(`成功加载${topicInfo} ${questions.value.length} 道题目`)
         }
       } else {
         ElMessage.error('加载题目失败：数据格式错误')
@@ -604,9 +683,6 @@ const loadingRankings = ref(false)
       console.error('加载题目失败:', error)
       ElMessage.error('加载题目失败，请稍后重试')
     } finally {
-      if (loadingInstance) {
-        loadingInstance.close()
-      }
       loading.value = false
     }
   }
@@ -619,9 +695,22 @@ const loadingRankings = ref(false)
   
   // 组件挂载时加载专题列表和题目
   onMounted(async () => {
+    // 如果从藏品页跳转过来，带有 ?topic=xxx，自动选中该专题
+    const topicFromQuery = route.query.topic
+    if (topicFromQuery) {
+      selectedTopic.value = decodeURIComponent(topicFromQuery)
+    }
     await loadTopics()
     await loadQuestions()
     await loadRankings() // 初始加载排行榜
+    // 加载藏品列表，用于显示专题奖励标识
+    try {
+      const collections = await getDigitalCollectionList()
+      allCollections.value = Array.isArray(collections) ? collections : []
+    } catch (e) {
+      // 加载失败不影响主功能
+      allCollections.value = []
+    }
   })
   
   const currentQuestion = computed(() => questions.value[currentIndex.value])
@@ -651,6 +740,9 @@ const loadingRankings = ref(false)
   })
   
   const totalScore = computed(() => questions.value.length * pointsPerQuestion)
+  
+  // 是否满分
+  const isPerfectScore = computed(() => score.value > 0 && score.value === totalScore.value)
   
   const correctCount = computed(() => {
     let count = 0
@@ -792,6 +884,17 @@ const loadingRankings = ref(false)
     }
     
     showResult.value = true
+
+    // 根据实际得分加载奖励藏品（仅满分才查询）
+    if (isPerfectScore.value) {
+      loadRewardItems()
+      // 写入满分解锁资格（专题+时间），供数字藏品页读取
+      const topicKey = selectedTopic.value || '__all__'
+      const unlockKey = `quiz_perfect_${topicKey}`
+      localStorage.setItem(unlockKey, String(Date.now()))
+    }
+    // 自动绘制成就证书
+    drawCertAfterSubmit()
     
     // 提交答题记录到后端
     try {
@@ -918,6 +1021,224 @@ const loadingRankings = ref(false)
   const goMintCollection = () => {
     router.push({ path: '/digital-collection', query: { score: accuracy.value } })
   }
+
+  // ── 证书生成 ──────────────────────────────────────────────
+  const certCanvas = ref(null)
+  const certGenerating = ref(false)
+
+  // 提交后自动绘制证书
+  const drawCert = () => {
+    const canvas = certCanvas.value
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    const W = 900, H = 520
+    ctx.clearRect(0, 0, W, H)
+
+    // 背景渐变（米色仿纸）
+    const bg = ctx.createLinearGradient(0, 0, W, H)
+    bg.addColorStop(0, '#fdf8f0')
+    bg.addColorStop(1, '#f5ede0')
+    ctx.fillStyle = bg
+    ctx.fillRect(0, 0, W, H)
+
+    // 外边框（双线装饰）
+    ctx.strokeStyle = '#c8302b'
+    ctx.lineWidth = 6
+    ctx.strokeRect(18, 18, W - 36, H - 36)
+    ctx.strokeStyle = 'rgba(200,48,43,0.3)'
+    ctx.lineWidth = 2
+    ctx.strokeRect(28, 28, W - 56, H - 56)
+
+    // 四角装饰（L 形，锚点在内框角上，向内延伸，不超出边界）
+    const cornerLen = 36
+    const cOff = 38  // 距边框角的偏移（内框角坐标）
+    // [x, y, dx水平方向, dy垂直方向]
+    const corners4 = [
+      [cOff, cOff,       1,  1],
+      [W - cOff, cOff,  -1,  1],
+      [cOff, H - cOff,   1, -1],
+      [W - cOff, H - cOff, -1, -1]
+    ]
+    corners4.forEach(([cx, cy, dx, dy]) => {
+      ctx.save()
+      ctx.strokeStyle = '#c8302b'
+      ctx.lineWidth = 2.5
+      ctx.beginPath()
+      ctx.moveTo(cx + dx * cornerLen, cy)  // 水平臂末端
+      ctx.lineTo(cx, cy)                    // 角点
+      ctx.lineTo(cx, cy + dy * cornerLen)  // 垂直臂末端
+      ctx.stroke()
+      ctx.restore()
+    })
+
+    // 顶部副标题
+    ctx.font = 'bold 14px "Noto Serif SC", serif'
+    ctx.fillStyle = 'rgba(200,48,43,0.65)'
+    ctx.textAlign = 'center'
+    ctx.fillText('遗  见  网  ·  数字非遗传承平台', W / 2, 68)
+
+    // 主标题
+    ctx.font = 'bold 48px "Noto Serif SC", serif'
+    ctx.fillStyle = '#1d1f24'
+    ctx.textAlign = 'center'
+    ctx.fillText('完 成 证 书', W / 2, 145)
+
+    // 标题下装饰线（带中心菱形）
+    const lineY = 170
+    ctx.strokeStyle = '#c8302b'
+    ctx.lineWidth = 1.5
+    ctx.beginPath(); ctx.moveTo(100, lineY); ctx.lineTo(W / 2 - 22, lineY); ctx.stroke()
+    ctx.beginPath(); ctx.moveTo(W / 2 + 22, lineY); ctx.lineTo(W - 100, lineY); ctx.stroke()
+    ctx.fillStyle = '#c8302b'
+    ctx.save(); ctx.translate(W / 2, lineY); ctx.rotate(Math.PI / 4)
+    ctx.fillRect(-7, -7, 14, 14); ctx.restore()
+
+    // "兹证明"
+    ctx.font = '20px "Noto Serif SC", serif'
+    ctx.fillStyle = '#5a5a5a'
+    ctx.textAlign = 'center'
+    ctx.fillText('兹  证  明', W / 2, 218)
+
+    // 用户名（大字红色）
+    const username = authStore.currentUser?.username || '学习者'
+    ctx.font = 'bold 38px "Noto Serif SC", serif'
+    ctx.fillStyle = '#c8302b'
+    ctx.textAlign = 'center'
+    ctx.fillText(username, W / 2, 272)
+
+    // 正文描述（两行，正式证书语气）
+    const topicLabel = selectedTopic.value || '非遗知识综合'
+    const now = new Date()
+    const dateStr = `${now.getFullYear()} 年 ${now.getMonth() + 1} 月 ${now.getDate()} 日`
+
+    ctx.font = '21px "Noto Serif SC", serif'
+    ctx.fillStyle = '#2c2c2c'
+    ctx.textAlign = 'center'
+    ctx.fillText(`已完成遗见网数字非遗《${topicLabel}》专题答题`, W / 2, 322)
+    ctx.font = '18px "Noto Serif SC", serif'
+    ctx.fillStyle = '#555'
+    ctx.fillText('特颁此证，以资鼓励，望继续传承中华非物质文化遗产。', W / 2, 358)
+
+    // 分割细线
+    ctx.strokeStyle = 'rgba(200,48,43,0.18)'
+    ctx.lineWidth = 1
+    ctx.beginPath(); ctx.moveTo(100, 382); ctx.lineTo(W - 100, 382); ctx.stroke()
+
+    // 底部左：日期
+    ctx.font = '15px "Noto Serif SC", serif'
+    ctx.fillStyle = '#888'
+    ctx.textAlign = 'left'
+    ctx.fillText(`发证日期：${dateStr}`, 110, 420)
+
+    // 底部右：平台名（留出印章空间，缩短文字）
+    ctx.textAlign = 'right'
+    ctx.fillText('遗见网非遗传承平台', W - 210, 420)
+
+    // 底部中：格言
+    ctx.font = '13px "Noto Serif SC", serif'
+    ctx.fillStyle = 'rgba(200,48,43,0.5)'
+    ctx.textAlign = 'center'
+    ctx.fillText('传承非遗文化  守护中华根脉', W / 2, 460)
+
+    // 印章（右下角，仿真红色圆章）
+    ctx.save()
+    ctx.translate(W - 118, H - 108)
+    ctx.rotate(-0.22)
+    ctx.strokeStyle = 'rgba(200,48,43,0.62)'
+    ctx.lineWidth = 3
+    ctx.beginPath(); ctx.arc(0, 0, 55, 0, Math.PI * 2); ctx.stroke()
+    ctx.lineWidth = 1.5
+    ctx.beginPath(); ctx.arc(0, 0, 46, 0, Math.PI * 2); ctx.stroke()
+    // 章内五角星
+    ctx.fillStyle = 'rgba(200,48,43,0.62)'
+    ctx.beginPath()
+    for (let k = 0; k < 5; k++) {
+      const a = (k * 4 * Math.PI) / 5 - Math.PI / 2
+      const b = a + (2 * Math.PI) / 5
+      if (k === 0) ctx.moveTo(Math.cos(a) * 12, Math.sin(a) * 12)
+      else ctx.lineTo(Math.cos(a) * 12, Math.sin(a) * 12)
+      ctx.lineTo(Math.cos(b) * 5, Math.sin(b) * 5)
+    }
+    ctx.closePath(); ctx.fill()
+    ctx.font = 'bold 11px "Noto Serif SC", serif'
+    ctx.fillStyle = 'rgba(200,48,43,0.72)'
+    ctx.textAlign = 'center'
+    ctx.fillText('遗见网', 0, 28)
+    ctx.fillText('官方认证', 0, 42)
+    ctx.restore()
+
+    // 底部水印
+    ctx.font = '11px Arial'
+    ctx.fillStyle = 'rgba(0,0,0,0.1)'
+    ctx.textAlign = 'right'
+    ctx.fillText('yijian.heritage.cn', W - 40, H - 16)
+  }
+
+  const downloadCert = async () => {
+    certGenerating.value = true
+    await new Promise(r => setTimeout(r, 60)) // 等 canvas ref 就绪
+    drawCert()
+    const canvas = certCanvas.value
+    if (!canvas) { certGenerating.value = false; return }
+    const link = document.createElement('a')
+    const username = authStore.currentUser?.username || 'user'
+    link.download = `非遗测验证书_${username}.png`
+    link.href = canvas.toDataURL('image/png')
+    link.click()
+    certGenerating.value = false
+  }
+
+  // 提交后自动绘制证书（等 DOM 更新后）
+  const drawCertAfterSubmit = () => {
+    setTimeout(() => { drawCert() }, 300)
+  }
+
+  // ── 全对奖励藏品 ──────────────────────────────────────────
+  const rewardItems = ref([])
+  const rewardLoading = ref(false)
+  const claimingId = ref(null)
+  const claimedIds = ref([])
+
+  const loadRewardItems = async () => {
+    rewardLoading.value = true
+    try {
+      const data = await getCollectionByScore(accuracy.value, selectedTopic.value || '')
+      rewardItems.value = Array.isArray(data) ? data : []
+    } catch (e) {
+      rewardItems.value = []
+    } finally {
+      rewardLoading.value = false
+    }
+  }
+
+  const claimReward = async (item) => {
+    if (!authStore.currentUser?.userId) {
+      ElMessage.warning('请先登录后再领取藏品')
+      return
+    }
+    claimingId.value = item.id
+    try {
+      const now = new Date()
+      const ownedAt = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`
+      await mintDigitalAsset({
+        userId: authStore.currentUser.userId,
+        itemId: item.id,
+        source: '测评满分奖励',
+        ownedAt,
+        tokenUri: ''
+      })
+      claimedIds.value.push(item.id)
+      // 更新本地剩余数量
+      item.left = Math.max(0, (item.left || 1) - 1)
+      ElMessage.success(`恭喜！《${item.name}》已收入你的数字藏品库`)
+    } catch (e) {
+      const msg = e?.response?.data?.message || e?.message || '领取失败，请稍后重试'
+      ElMessage.error(msg)
+    } finally {
+      claimingId.value = null
+    }
+  }
+
   
   // 获取选项前缀
   const getOptionPrefix = (index) => {
@@ -1029,7 +1350,44 @@ const loadingRankings = ref(false)
   justify-content: center;
   flex-wrap: wrap;
   gap: 10px;
-  
+
+  :deep(.el-radio-button) {
+    position: relative;
+
+    &.has-nft-reward {
+      // NFT 徽章：右上角绝对定位
+      .nft-reward-badge {
+        position: absolute;
+        top: -8px;
+        right: -4px;
+        z-index: 1;
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+        font-size: 9px;
+        font-weight: 800;
+        padding: 2px 7px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #e05a43, #c8302b);
+        color: #fff;
+        letter-spacing: 0.5px;
+        box-shadow: 0 2px 6px rgba(200,48,43,0.4);
+        line-height: 1.2;
+        pointer-events: none;
+
+        .el-icon { font-size: 10px; }
+      }
+    }
+
+    // 选中状态下的徽章颜色
+    &.has-nft-reward.is-active {
+      .nft-reward-badge {
+        background: linear-gradient(135deg, #f56c6c, #e05a43);
+        box-shadow: 0 2px 8px rgba(245,108,108,0.45);
+      }
+    }
+  }
+
   :deep(.el-radio-button__inner) {
     border-radius: 12px !important;
     border: 1px solid var(--line) !important;
@@ -1039,12 +1397,20 @@ const loadingRankings = ref(false)
     color: var(--ink);
     transition: all 0.2s ease;
   }
-  
+
   :deep(.is-active .el-radio-button__inner) {
     background: var(--primary-color) !important;
     border-color: var(--primary-color) !important;
     color: #fff !important;
     box-shadow: 0 8px 20px rgba(200,48,43,0.2);
+  }
+
+  // 有 NFT 奖励的专题按钮边框
+  .has-nft-reward:not(.is-active) {
+    :deep(.el-radio-button__inner) {
+      border-color: rgba(200,48,43,0.45) !important;
+      background: linear-gradient(135deg, #fff, #fef5f4) !important;
+    }
   }
 }
 
@@ -1660,9 +2026,189 @@ const loadingRankings = ref(false)
   padding: 0 28px !important;
 }
 
+// ── 全对奖励藏品区域 ─────────────────────────────────────────
+.reward-section {
+  margin-top: 24px;
+  background: linear-gradient(135deg, #1a0a00, #2e1400);
+  border: 1px solid rgba(255,180,0,0.3);
+  border-radius: 16px;
+  padding: 20px;
+
+  .reward-header {
+    margin-bottom: 16px;
+    .reward-title-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 16px;
+      font-weight: 700;
+      color: #fbbf24;
+    }
+    .reward-sub {
+      margin: 6px 0 0;
+      font-size: 12px;
+      color: rgba(255,255,255,0.5);
+    }
+  }
+
+  .reward-loading, .reward-empty {
+    text-align: center;
+    color: rgba(255,255,255,0.4);
+    padding: 20px 0;
+    font-size: 14px;
+  }
+
+  .reward-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+
+  .reward-card {
+    display: flex;
+    gap: 12px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 12px;
+    flex: 1;
+    min-width: 220px;
+    transition: transform 0.2s;
+
+    &:hover { transform: translateY(-2px); }
+
+    &.legendary { border-color: rgba(251,191,36,0.5); box-shadow: 0 0 12px rgba(251,191,36,0.2); }
+    &.epic      { border-color: rgba(167,139,250,0.5); box-shadow: 0 0 12px rgba(167,139,250,0.2); }
+    &.rare      { border-color: rgba(96,165,250,0.5); }
+  }
+
+  .reward-card-img {
+    position: relative;
+    flex-shrink: 0;
+    img {
+      width: 70px;
+      height: 70px;
+      object-fit: cover;
+      border-radius: 8px;
+    }
+    .reward-rarity-badge {
+      position: absolute;
+      bottom: 3px;
+      right: 3px;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: rgba(0,0,0,0.7);
+      &.legendary { color: #fbbf24; }
+      &.epic      { color: #a78bfa; }
+      &.rare      { color: #60a5fa; }
+      &.common    { color: #9ca3af; }
+    }
+  }
+
+  .reward-card-info {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .reward-card-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .reward-card-serial {
+    font-size: 11px;
+    color: rgba(255,255,255,0.4);
+  }
+
+  .reward-card-left {
+    font-size: 11px;
+    color: #fbbf24;
+  }
+
+  .reward-claim-btn {
+    border-radius: 999px !important;
+    font-weight: 700 !important;
+    margin-top: 4px;
+  }
+}
+
+
 .rarity-common    { color: #9ca3af; font-weight: 700; }
 .rarity-rare      { color: #60a5fa; font-weight: 700; }
 .rarity-epic      { color: #a78bfa; font-weight: 700; }
 .rarity-legendary { color: #fcd34d; font-weight: 700; }
+
+// ── 证书区域 ──────────────────────────────────────────────
+.cert-section {
+  margin-top: 28px;
+  background: linear-gradient(135deg, #fffdf8, #fdf5e8);
+  border: 1px solid rgba(200,48,43,0.2);
+  border-radius: 18px;
+  padding: 24px 24px 20px;
+  text-align: center;
+}
+
+.cert-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #c8302b;
+  margin-bottom: 6px;
+}
+
+.cert-section-sub {
+  font-size: 13px;
+  color: #888;
+  margin: 0 0 18px;
+}
+
+.cert-preview-wrap {
+  width: 100%;
+  overflow: auto;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+  background: #fff;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+
+.cert-canvas {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 12px;
+}
+
+.cert-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.cert-download-btn {
+  border-radius: 999px !important;
+  font-weight: 700 !important;
+  padding: 0 32px !important;
+  height: 48px !important;
+  font-size: 15px !important;
+  background: linear-gradient(135deg, #c8302b, #e05a43) !important;
+  border: none !important;
+  box-shadow: 0 8px 20px rgba(200,48,43,0.25) !important;
+  &:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(200,48,43,0.35) !important; }
+}
 
 </style>

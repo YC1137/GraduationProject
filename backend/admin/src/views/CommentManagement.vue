@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="comment-management">
     <el-card>
       <template #header>
@@ -7,9 +7,9 @@
           <div class="header-right">
             <el-radio-group v-model="filterStatus" @change="applyFilter" size="small">
               <el-radio-button label="all">全部 ({{ allComments.length }})</el-radio-button>
-              <el-radio-button label="0">
+              <el-radio-button label="0" class="pending-btn">
                 待审核
-                <el-badge v-if="pendingCount > 0" :value="pendingCount" class="badge-inline" />
+                <el-badge v-if="pendingCount > 0" :value="pendingCount" class="badge-inline" :max="99" />
               </el-radio-button>
               <el-radio-button label="1">已通过</el-radio-button>
               <el-radio-button label="2">已拒绝</el-radio-button>
@@ -21,7 +21,7 @@
         </div>
       </template>
 
-      <el-table :data="comments" style="width: 100%" v-loading="loading" row-key="id">
+      <el-table :data="comments" style="width: 100%" v-loading="loading" element-loading-text="正在加载评论数据..." row-key="id">
         <el-table-column prop="id" label="ID" width="70" />
         <el-table-column prop="heritageId" label="遗产ID" width="90" />
         <el-table-column label="用户" width="130">
@@ -70,7 +70,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import axios from 'axios'
 
 const allComments = ref([])
-const loading = ref(false)
+const loading = ref(true)
 const filterStatus = ref('all')
 
 const pendingCount = computed(() => allComments.value.filter(c => c.status === 0).length)
@@ -85,7 +85,7 @@ const applyFilter = () => { /* computed 自动响应 */ }
 const fetchComments = async () => {
   loading.value = true
   try {
-    const res = await axios.get('http://localhost:8080/api/comment/admin/all')
+    const res = await axios.get('/api/comment/admin/all')
     if (res.data.code === 200) {
       allComments.value = res.data.data || []
     } else {
@@ -121,7 +121,7 @@ const handleReview = async (row, status) => {
       type: status === 1 ? 'success' : 'warning'
     })
     const res = await axios.put(
-      `http://localhost:8080/api/comment/admin/${row.id}/review`,
+      `/api/comment/admin/${row.id}/review`,
       null,
       { params: { status } }
     )
@@ -143,7 +143,7 @@ const handleDelete = async (row) => {
       cancelButtonText: '取消',
       type: 'warning'
     })
-    const res = await axios.delete(`http://localhost:8080/api/comment/admin/${row.id}`)
+    const res = await axios.delete(`/api/comment/admin/${row.id}`)
     if (res.data.code === 200) {
       ElMessage.success('删除成功')
       allComments.value = allComments.value.filter(c => c.id !== row.id)
@@ -180,6 +180,28 @@ onMounted(fetchComments)
 .badge-inline {
   margin-left: 4px;
   vertical-align: middle;
+
+  :deep(.el-badge__content) {
+    font-size: 10px;
+    height: 16px;
+    line-height: 16px;
+    padding: 0 5px;
+  }
+}
+
+.pending-btn {
+  position: relative;
+
+  :deep(.el-radio-button__inner) {
+    padding-right: 20px;
+  }
+
+  .badge-inline {
+    position: absolute;
+    top: -6px;
+    right: 4px;
+    margin-left: 0;
+  }
 }
 
 .user-cell {

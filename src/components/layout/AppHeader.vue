@@ -1,4 +1,4 @@
-<template>
+﻿<template>
     <header class="app-header">
       <div class="container">
         <!-- 顶部标题栏 -->
@@ -64,7 +64,7 @@
               <div v-else class="user-dropdown-wrap" @click="toggleUserMenu" v-click-outside="closeUserMenu">
                 <div class="user-info" :class="{ open: userMenuOpen }">
                   <el-avatar :src="fixedAvatar" :size="32" />
-                  <span class="username">{{ authStore.currentUser.username }}</span>
+                  <span class="username">{{ authStore.currentUser.nickname || authStore.currentUser.username }}</span>
                   <svg class="arrow-icon" :class="{ rotated: userMenuOpen }" viewBox="0 0 24 24" width="14" height="14"><path d="M7 10l5 5 5-5z" fill="currentColor"/></svg>
                 </div>
                 <!-- 自定义下拉面板 -->
@@ -73,7 +73,7 @@
                   <div class="panel-header">
                     <el-avatar :src="fixedAvatar" :size="48" class="panel-avatar" />
                     <div class="panel-user-info">
-                      <div class="panel-username">{{ authStore.currentUser.username }}</div>
+                      <div class="panel-username">{{ authStore.currentUser.nickname || authStore.currentUser.username }}</div>
                       <div class="panel-email">{{ authStore.currentUser.email || '暂无邮箱' }}</div>
                     </div>
                   </div>
@@ -160,7 +160,7 @@
               <div class="user-profile">
                 <el-avatar :src="fixedAvatar" :size="40" />
                 <div class="user-details">
-                  <div class="username">{{ authStore.currentUser.username }}</div>
+                  <div class="username">{{ authStore.currentUser.nickname || authStore.currentUser.username }}</div>
                   <div class="user-email">{{ authStore.currentUser.email }}</div>
                 </div>
               </div>
@@ -228,11 +228,19 @@
   
   const isMobile = computed(() => windowWidth.value <= 768)
 
-// 修正头像 URL：将 localhost 替换为当前访问的实际 hostname，兼容手机端局域网访问
+// 修正头像 URL：将后端地址替换为前端代理地址
 const fixedAvatar = computed(() => {
   const src = authStore.currentUser?.avatar
   if (!src) return ''
-  return src.replace(/http:\/\/localhost:/g, `http://${window.location.hostname}:`)
+  // 后端地址可能是 localhost:8080 或生产环境域名，替换为当前页面 origin
+  // 处理两种情况：完整 URL (http://localhost:8080/api) 和相对路径 (/api)
+  const backendBaseURL = import.meta.env.VITE_API_BASE_URL || `http://localhost:8080/api`
+  let backendOrigin = backendBaseURL.replace(/\/api$/, '')
+  // 如果 backendOrigin 是空字符串（相对路径情况），则基于当前 origin 构建
+  if (!backendOrigin || backendOrigin === '/') {
+    backendOrigin = window.location.origin
+  }
+  return src.replace(backendOrigin, window.location.origin)
 })
 
   const toggleUserMenu = () => { userMenuOpen.value = !userMenuOpen.value }
@@ -277,18 +285,20 @@ const fixedAvatar = computed(() => {
     loginMode.value = 'login'
     loginDialogVisible.value = true
     closeMobileMenu()
-    console.log('showLogin called, loginDialogVisible:', loginDialogVisible.value)
   }
-  
+
   const showRegister = () => {
     loginMode.value = 'register'
     loginDialogVisible.value = true
     closeMobileMenu()
-    console.log('showRegister called, loginDialogVisible:', loginDialogVisible.value)
   }
   
-  const handleLoginSuccess = () => {
-    ElMessage.success('欢迎回来！')
+  const handleLoginSuccess = (isLogin) => {
+    if (isLogin) {
+      ElMessage.success('欢迎回来！')
+    } else {
+      ElMessage.success('注册成功，欢迎加入！')
+    }
   }
   
   const handleUserCommand = (command) => {
@@ -564,6 +574,12 @@ const fixedAvatar = computed(() => {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+
+      .account-hint {
+        font-size: 11px;
+        color: var(--text-light);
+        font-weight: 400;
+      }
     }
 
     .arrow-icon {

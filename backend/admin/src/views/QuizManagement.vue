@@ -1,25 +1,55 @@
-<template>
+﻿<template>
   <div class="quiz-management">
-    <el-card>
+    <!-- 未选专题：显示专题卡片列表 -->
+    <div v-if="!activeTopic" class="topic-grid-view">
+      <div class="page-header">
+        <span class="page-title">测验题目管理</span>
+        <div style="display:flex;gap:10px">
+          <el-button type="success" @click="handleCreateTopic">+ 新建专题</el-button>
+          <el-button type="primary" @click="handleAdd">+ 添加题目</el-button>
+        </div>
+      </div>
+
+      <div v-loading="loading" class="topic-cards">
+        <div
+          v-for="topic in topicStats"
+          :key="topic.name"
+          class="topic-card"
+          @click="enterTopic(topic.name)"
+        >
+          <div class="topic-icon">
+            <el-icon size="32"><Collection /></el-icon>
+          </div>
+          <div class="topic-info">
+            <div class="topic-name">{{ topic.name }}</div>
+            <div class="topic-meta">
+              <span class="count-badge total">共 {{ topic.total }} 题</span>
+              <span class="count-badge enabled">启用 {{ topic.enabled }}</span>
+              <span v-if="topic.disabled" class="count-badge disabled">禁用 {{ topic.disabled }}</span>
+            </div>
+          </div>
+          <el-icon class="arrow-icon"><ArrowRight /></el-icon>
+        </div>
+
+        <div v-if="!loading && topicStats.length === 0" class="empty-tip">
+          <el-empty description="暂无专题，点击右上角添加题目" />
+        </div>
+      </div>
+    </div>
+
+    <!-- 已选专题：显示题目列表 -->
+    <el-card v-else class="question-card">
       <template #header>
         <div class="card-header">
-          <span>测验题目管理</span>
+          <div class="breadcrumb">
+            <el-button text @click="backToTopics" class="back-btn">
+              <el-icon><ArrowLeft /></el-icon> 返回专题列表
+            </el-button>
+            <el-divider direction="vertical" />
+            <span class="current-topic">{{ activeTopic }}</span>
+            <el-tag type="info" size="small" style="margin-left:8px">{{ questions.length }} 题</el-tag>
+          </div>
           <div class="header-buttons">
-            <el-select 
-              v-model="selectedTopic" 
-              placeholder="筛选专题" 
-              clearable 
-              @change="handleTopicFilter"
-              style="width: 200px; margin-right: 10px;"
-            >
-              <el-option label="全部专题" value="" />
-              <el-option 
-                v-for="topic in topics" 
-                :key="topic" 
-                :label="topic" 
-                :value="topic" 
-              />
-            </el-select>
             <el-button type="warning" @click="handleBatchEnable(true)" :disabled="!selectedRows.length">
               批量启用 ({{ selectedRows.length }})
             </el-button>
@@ -33,10 +63,10 @@
           </div>
         </div>
       </template>
-      
-      <el-table 
-        :data="questions" 
-        style="width: 100%" 
+
+      <el-table
+        :data="questions"
+        style="width: 100%"
         v-loading="loading"
         @selection-change="handleSelectionChange"
       >
@@ -49,7 +79,6 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="topicName" label="专题" width="150" show-overflow-tooltip />
         <el-table-column prop="question" label="题目" min-width="400" show-overflow-tooltip />
         <el-table-column prop="options" label="选项" min-width="300" show-overflow-tooltip />
         <el-table-column prop="answer" label="答案" width="100">
@@ -77,10 +106,21 @@
       </el-table>
     </el-card>
 
+    <!-- 添加/编辑弹窗 -->
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="800px">
       <el-form :model="form" :rules="rules" ref="formRef" label-width="100px">
         <el-form-item label="专题" prop="topicName">
-          <el-input v-model="form.topicName" placeholder="例如：非遗基础知识" />
+          <el-select
+            v-model="form.topicName"
+            filterable
+            allow-create
+            default-first-option
+            placeholder="选择或输入专题名称（输入后按Enter确认）"
+            style="width:100%"
+            @change="(val) => { form.topicName = val }"
+          >
+            <el-option v-for="t in topics" :key="t" :label="t" :value="t" />
+          </el-select>
         </el-form-item>
         <el-form-item label="题目" prop="question">
           <el-input v-model="form.question" type="textarea" :rows="3" />
@@ -105,18 +145,31 @@
         <el-button type="primary" @click="confirmSave">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 新建专题弹窗 -->
+    <el-dialog v-model="topicDialogVisible" title="新建专题" width="400px">
+      <el-form :model="topicForm" :rules="topicRules" ref="topicFormRef" label-width="80px">
+        <el-form-item label="专题名称" prop="name">
+          <el-input v-model="topicForm.name" placeholder="请输入专题名称" clearable />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="topicDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="confirmCreateTopic">确定并添加题目</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Collection, ArrowRight, ArrowLeft } from '@element-plus/icons-vue'
 import axios from 'axios'
 
-const questions = ref([])
 const allQuestions = ref([])
 const topics = ref([])
-const selectedTopic = ref('')
+const activeTopic = ref('')   // 当前进入的专题，空字符串 = 显示专题列表
 const loading = ref(false)
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
@@ -132,21 +185,88 @@ const form = ref({
   enabled: true
 })
 
+// 新建专题
+const topicDialogVisible = ref(false)
+const topicFormRef = ref(null)
+const topicForm = ref({ name: '' })
+const topicRules = {
+  name: [
+    { required: true, message: '请输入专题名称', trigger: 'blur' },
+    {
+      validator: (rule, value, callback) => {
+        if (topics.value.includes(value.trim())) {
+          callback(new Error('该专题已存在'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur'
+    }
+  ]
+}
+
+const handleCreateTopic = () => {
+  topicForm.value = { name: '' }
+  topicDialogVisible.value = true
+}
+
+const confirmCreateTopic = async () => {
+  try {
+    await topicFormRef.value.validate()
+    const newTopicName = topicForm.value.name.trim()
+    topicDialogVisible.value = false
+    // 打开添加题目弹窗，并预填新专题名
+    dialogTitle.value = '添加测验题目'
+    form.value = {
+      id: null,
+      topicName: newTopicName,
+      question: '',
+      options: '',
+      answer: 0,
+      explanation: '',
+      enabled: true
+    }
+    dialogVisible.value = true
+  } catch (e) {
+    // 校验失败
+  }
+}
+
 const rules = {
-  topicName: [{ required: true, message: '请输入专题名称', trigger: 'blur' }],
+  topicName: [{ required: true, message: '请输入专题名称', trigger: ['blur', 'change'] }],
   question: [{ required: true, message: '请输入题目', trigger: 'blur' }],
   options: [{ required: true, message: '请输入选项', trigger: 'blur' }],
-  answer: [{ required: true, message: '请输入答案', trigger: 'blur' }]
+  answer: [{ required: true, message: '请选择答案', trigger: 'change' }]
 }
+
+// 当前专题的题目列表
+const questions = computed(() => {
+  if (!activeTopic.value) return []
+  return allQuestions.value.filter(q => q.topicName === activeTopic.value)
+})
+
+// 专题统计（卡片列表）
+const topicStats = computed(() => {
+  const map = {}
+  allQuestions.value.forEach(q => {
+    const t = q.topicName || '未分类'
+    if (!map[t]) map[t] = { name: t, total: 0, enabled: 0, disabled: 0 }
+    map[t].total++
+    if (q.enabled) map[t].enabled++
+    else map[t].disabled++
+  })
+  return Object.values(map).sort((a, b) => a.name.localeCompare(b.name, 'zh'))
+})
 
 const fetchQuestions = async () => {
   loading.value = true
   try {
-    const response = await axios.get('http://localhost:8080/api/quiz/questions')
+    const response = await axios.get('/api/quiz/questions')
     if (response.data.code === 200) {
       allQuestions.value = response.data.data
-      updateTopicList()
-      applyFilter()
+      const set = new Set()
+      allQuestions.value.forEach(q => { if (q.topicName) set.add(q.topicName) })
+      topics.value = Array.from(set).sort()
     }
   } catch (error) {
     console.error('获取测验题目失败:', error)
@@ -156,33 +276,21 @@ const fetchQuestions = async () => {
   }
 }
 
-const updateTopicList = () => {
-  const topicSet = new Set()
-  allQuestions.value.forEach(q => {
-    if (q.topicName) {
-      topicSet.add(q.topicName)
-    }
-  })
-  topics.value = Array.from(topicSet).sort()
+const enterTopic = (topicName) => {
+  activeTopic.value = topicName
+  selectedRows.value = []
 }
 
-const applyFilter = () => {
-  if (!selectedTopic.value) {
-    questions.value = allQuestions.value
-  } else {
-    questions.value = allQuestions.value.filter(q => q.topicName === selectedTopic.value)
-  }
-}
-
-const handleTopicFilter = () => {
-  applyFilter()
+const backToTopics = () => {
+  activeTopic.value = ''
+  selectedRows.value = []
 }
 
 const handleAdd = () => {
   dialogTitle.value = '添加测验题目'
   form.value = {
     id: null,
-    topicName: '非遗基础知识',
+    topicName: activeTopic.value || (topics.value[0] || ''),
     question: '',
     options: '',
     answer: 0,
@@ -201,53 +309,48 @@ const handleEdit = (row) => {
 const confirmSave = async () => {
   try {
     await formRef.value.validate()
-    
     let response
     if (form.value.id) {
-      response = await axios.put(`http://localhost:8080/api/admin/quiz/${form.value.id}`, form.value)
+      response = await axios.put(`/api/admin/quiz/${form.value.id}`, form.value)
     } else {
-      response = await axios.post('http://localhost:8080/api/admin/quiz', form.value)
+      response = await axios.post('/api/admin/quiz', form.value)
     }
-    
     if (response.data.code === 200) {
       ElMessage.success('保存成功')
       dialogVisible.value = false
-      fetchQuestions()
+      await fetchQuestions()
+      // 如果新增题目的专题与当前不同，自动跳转
+      if (form.value.topicName && form.value.topicName !== activeTopic.value) {
+        activeTopic.value = form.value.topicName
+      }
     } else {
       ElMessage.error(response.data.message)
     }
   } catch (error) {
-    console.error('保存失败:', error)
-    ElMessage.error('保存失败')
+    if (error?.message) ElMessage.error('保存失败')
   }
 }
 
 const handleDelete = (row) => {
-  ElMessageBox.confirm(
-    `确定要删除这道题目吗？`,
-    '提示',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    }
-  ).then(async () => {
+  ElMessageBox.confirm('确定要删除这道题目吗？', '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(async () => {
     try {
-      const response = await axios.delete(`http://localhost:8080/api/admin/quiz/${row.id}`)
-      
+      const response = await axios.delete(`/api/admin/quiz/${row.id}`)
       if (response.data.code === 200) {
         ElMessage.success('删除成功')
-        fetchQuestions()
+        await fetchQuestions()
+        // 如果该专题下已无题目，返回列表
+        if (questions.value.length === 0) backToTopics()
       } else {
         ElMessage.error(response.data.message)
       }
     } catch (error) {
-      console.error('删除失败:', error)
       ElMessage.error('删除失败')
     }
-  }).catch(() => {
-    ElMessage.info('已取消删除')
-  })
+  }).catch(() => {})
 }
 
 const handleSelectionChange = (val) => {
@@ -256,61 +359,42 @@ const handleSelectionChange = (val) => {
 
 const handleBatchDelete = () => {
   if (!selectedRows.value.length) return
-  
   ElMessageBox.confirm(
     `确定要删除选中的 ${selectedRows.value.length} 道题目吗？`,
     '提示',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    }
+    { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
   ).then(async () => {
     loading.value = true
     try {
       const ids = selectedRows.value.map(row => row.id)
-      const response = await axios.delete('http://localhost:8080/api/admin/quizzes/batch-delete', {
-        data: { ids }
-      })
-      
+      const response = await axios.delete('/api/admin/quizzes/batch-delete', { data: { ids } })
       if (response.data.code === 200) {
         ElMessage.success('批量删除成功')
         selectedRows.value = []
-        fetchQuestions()
+        await fetchQuestions()
+        if (questions.value.length === 0) backToTopics()
       } else {
         ElMessage.error(response.data.message)
       }
     } catch (error) {
-      console.error('批量删除失败:', error)
       ElMessage.error('批量删除失败')
     } finally {
       loading.value = false
     }
-  }).catch(() => {
-    ElMessage.info('已取消删除')
-  })
+  }).catch(() => {})
 }
 
 const handleBatchEnable = (enabled) => {
   if (!selectedRows.value.length) return
-  
   ElMessageBox.confirm(
     `确定要${enabled ? '启用' : '禁用'}选中的 ${selectedRows.value.length} 道题目吗？`,
     '提示',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    }
+    { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
   ).then(async () => {
     loading.value = true
     try {
       const ids = selectedRows.value.map(row => row.id)
-      const response = await axios.put('http://localhost:8080/api/admin/quizzes/batch-enabled', {
-        ids,
-        enabled
-      })
-      
+      const response = await axios.put('/api/admin/quizzes/batch-enabled', { ids, enabled })
       if (response.data.code === 200) {
         ElMessage.success(`批量${enabled ? '启用' : '禁用'}成功`)
         selectedRows.value = []
@@ -319,35 +403,23 @@ const handleBatchEnable = (enabled) => {
         ElMessage.error(response.data.message)
       }
     } catch (error) {
-      console.error(`批量${enabled ? '启用' : '禁用'}失败:`, error)
       ElMessage.error(`批量${enabled ? '启用' : '禁用'}失败`)
     } finally {
       loading.value = false
     }
-  }).catch(() => {
-    ElMessage.info('已取消操作')
-  })
+  }).catch(() => {})
 }
 
 const handleToggleEnabled = (row) => {
   const newEnabled = !row.enabled
-  
   ElMessageBox.confirm(
     `确定要${newEnabled ? '启用' : '禁用'}这道题目吗？`,
     '提示',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    }
+    { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
   ).then(async () => {
     loading.value = true
     try {
-      const response = await axios.put(`http://localhost:8080/api/admin/quiz/${row.id}`, {
-        ...row,
-        enabled: newEnabled
-      })
-      
+      const response = await axios.put(`/api/admin/quiz/${row.id}`, { ...row, enabled: newEnabled })
       if (response.data.code === 200) {
         ElMessage.success(`${newEnabled ? '启用' : '禁用'}成功`)
         fetchQuestions()
@@ -355,14 +427,11 @@ const handleToggleEnabled = (row) => {
         ElMessage.error(response.data.message)
       }
     } catch (error) {
-      console.error(`${newEnabled ? '启用' : '禁用'}失败:`, error)
       ElMessage.error(`${newEnabled ? '启用' : '禁用'}失败`)
     } finally {
       loading.value = false
     }
-  }).catch(() => {
-    ElMessage.info('已取消操作')
-  })
+  }).catch(() => {})
 }
 
 onMounted(() => {
@@ -375,15 +444,153 @@ onMounted(() => {
   padding: 20px;
   width: 100%;
   height: 100%;
-  overflow: hidden;
+  overflow: auto;
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
+}
+
+/* -------- 专题卡片视图 -------- */
+.topic-grid-view {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.page-title {
+  font-size: 18px;
+  font-weight: bold;
+  color: #303133;
+}
+
+.topic-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.topic-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background: #fff;
+  border: 1px solid #e4e7ed;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+
+.topic-card:hover {
+  border-color: #409eff;
+  box-shadow: 0 4px 16px rgba(64,158,255,0.15);
+  transform: translateY(-2px);
+}
+
+.topic-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #409eff22, #409eff44);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #409eff;
+  flex-shrink: 0;
+}
+
+.topic-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.topic-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topic-meta {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.count-badge {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+.count-badge.total {
+  background: #f0f2f5;
+  color: #606266;
+}
+
+.count-badge.enabled {
+  background: #f0f9eb;
+  color: #67c23a;
+}
+
+.count-badge.disabled {
+  background: #fef0f0;
+  color: #f56c6c;
+}
+
+.arrow-icon {
+  color: #c0c4cc;
+  font-size: 18px;
+  flex-shrink: 0;
+  transition: color 0.2s;
+}
+
+.topic-card:hover .arrow-icon {
+  color: #409eff;
+}
+
+.empty-tip {
+  grid-column: 1 / -1;
+  padding: 60px 0;
+}
+
+/* -------- 题目列表视图 -------- */
+.question-card {
+  flex: 1;
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.back-btn {
+  font-size: 14px;
+  color: #409eff;
+  padding: 0;
+}
+
+.current-topic {
   font-size: 16px;
   font-weight: bold;
   color: #303133;
@@ -394,31 +601,5 @@ onMounted(() => {
   gap: 10px;
   flex-wrap: wrap;
   align-items: center;
-}
-
-.el-card {
-  flex: 1;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.el-card__body {
-  flex: 1;
-  overflow: auto;
-}
-
-.el-table {
-  width: 100%;
-}
-
-@media (min-width: 1200px) {
-  .quiz-management {
-    padding: 30px;
-  }
-  
-  .card-header {
-    font-size: 18px;
-  }
 }
 </style>

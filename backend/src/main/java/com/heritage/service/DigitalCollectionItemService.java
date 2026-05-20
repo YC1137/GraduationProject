@@ -14,6 +14,21 @@ public class DigitalCollectionItemService {
 
     private final DigitalCollectionItemRepository repository;
 
+    public List<DigitalCollectionItem> listRewardByScore(int score) {
+        // 返回 scoreMin <= 用户得分 的藏品（门槛分在管理后台配置）
+        return repository.findByEnabledTrueAndScoreMinLessThanEqualAndLeftGreaterThanOrderBySortOrderAscIdAsc(score, 0);
+    }
+
+    /**
+     * 按专题+分数查询奖励藏品（传入 topicName="" 或 null 时退化为仅按分数查询）
+     */
+    public List<DigitalCollectionItem> listRewardByTopicAndScore(String topicName, int score) {
+        if (topicName == null || topicName.isBlank()) {
+            return listRewardByScore(score);
+        }
+        return repository.findRewardByTopicAndScore(topicName, score);
+    }
+
     public List<DigitalCollectionItem> listEnabled(String saleStatus) {
         if (saleStatus == null || saleStatus.isBlank()) {
             return repository.findByEnabledTrueOrderBySortOrderAscIdAsc();
@@ -45,11 +60,13 @@ public class DigitalCollectionItemService {
         existed.setRarityClass(item.getRarityClass());
         existed.setCover(item.getCover());
         existed.setGlowColor(item.getGlowColor());
+        existed.setDescription(item.getDescription());
         existed.setScoreMin(item.getScoreMin());
+        existed.setTopicName(item.getTopicName());
         existed.setTotal(item.getTotal());
         existed.setLeft(item.getLeft());
         existed.setSaleStatus(item.getSaleStatus());
-        existed.setCountdown(item.getCountdown());
+        existed.setSaleTime(item.getSaleTime());
         existed.setSortOrder(item.getSortOrder());
         existed.setEnabled(item.getEnabled());
 

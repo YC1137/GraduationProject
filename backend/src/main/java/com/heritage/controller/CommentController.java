@@ -45,10 +45,13 @@ public class CommentController {
     ) {
         try {
             User user = userService.getUserById(userId);
+            // 有昵称时用昵称，否则用账号
+            String displayName = (user.getNickname() != null && !user.getNickname().isBlank())
+                    ? user.getNickname() : user.getUsername();
             Comment comment = commentService.postComment(
                 request.getHeritageId(),
                 userId,
-                user.getUsername(),
+                displayName,
                 user.getAvatar(),
                 request.getContent()
             );

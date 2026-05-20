@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="bomb-page ink-wash-bg">
     <div class="container">
 
@@ -55,7 +55,7 @@
         </div>
 
         <!-- 荣耀榜 -->
-        <BombLeaderboard ref="leaderboardRef" class="start-leaderboard" />
+        <GameLeaderboard ref="leaderboardRef" class="start-leaderboard" />
       </div>
 
       <!-- ===== 游戏中 ===== -->
@@ -226,7 +226,7 @@ import { useAuthStore } from '@/stores/auth'
 import { playBombGame } from '@/api/ai'
 import { submitBombRecord } from '@/api/bomb'
 import { ElMessage } from 'element-plus'
-import BombLeaderboard from '@/components/bomb/BombLeaderboard.vue'
+import GameLeaderboard from '@/components/bomb/GameLeaderboard.vue'
 
 const heritageStore = useHeritageStore()
 const authStore = useAuthStore()

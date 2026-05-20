@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="heritage-management">
 
     <el-card>
@@ -142,7 +142,7 @@
             <el-button v-if="form.sidebarImage" type="danger" @click="form.sidebarImage = ''">清除</el-button>
           </div>
           <div v-if="form.sidebarImage" class="img-preview sidebar-item-preview">
-            <a :href="'http://localhost:5173/detail/' + form.id" target="_blank" title="点击跳转项目详情页">
+            <a :href="'/detail/' + form.id" target="_blank" title="点击跳转项目详情页">
               <img :src="form.sidebarImage" alt="侧栏图预览" />
               <span class="preview-tip">点击可跳转详情页</span>
             </a>
@@ -173,7 +173,7 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import axios from 'axios'
 
-const BASE = 'http://localhost:8080/api'
+const BASE = '/api'
 const UPLOAD_URL = `${BASE}/admin/upload`
 
 // ===== 非遗项目 =====
@@ -283,7 +283,7 @@ const rules = {
 const fetchHeritages = async () => {
   loading.value = true
   try {
-    const response = await axios.get('http://localhost:8080/api/heritage/list')
+    const response = await axios.get('/api/heritage/list')
     if (response.data.code === 200) {
       heritages.value = response.data.data
     }
@@ -341,9 +341,9 @@ const confirmSave = async () => {
 
     let response
     if (payload.id) {
-      response = await axios.put(`http://localhost:8080/api/admin/heritage/${payload.id}`, payload)
+      response = await axios.put(`/api/admin/heritage/${payload.id}`, payload)
     } else {
-      response = await axios.post('http://localhost:8080/api/admin/heritage', payload)
+      response = await axios.post('/api/admin/heritage', payload)
     }
     
     if (response.data.code === 200) {
@@ -370,7 +370,7 @@ const handleDelete = (row) => {
     }
   ).then(async () => {
     try {
-      const response = await axios.delete(`http://localhost:8080/api/admin/heritage/${row.id}`)
+      const response = await axios.delete(`/api/admin/heritage/${row.id}`)
       
       if (response.data.code === 200) {
         ElMessage.success('删除成功')
@@ -406,7 +406,7 @@ const handleBatchDelete = () => {
     loading.value = true
     try {
       const ids = selectedRows.value.map(row => row.id)
-      const response = await axios.delete('http://localhost:8080/api/admin/heritages/batch-delete', {
+      const response = await axios.delete('/api/admin/heritages/batch-delete', {
         data: { ids }
       })
       
@@ -443,7 +443,7 @@ const handleBatchEnable = (enabled) => {
     loading.value = true
     try {
       const ids = selectedRows.value.map(row => row.id)
-      const response = await axios.put('http://localhost:8080/api/admin/heritages/batch-enabled', {
+      const response = await axios.put('/api/admin/heritages/batch-enabled', {
         ids,
         enabled
       })
@@ -486,7 +486,7 @@ const handleToggleEnabled = (row) => {
       images: Array.isArray(row.images) ? JSON.stringify(row.images) : (row.images || '[]'),
       timeline: Array.isArray(row.timeline) ? JSON.stringify(row.timeline) : (row.timeline || '[]')
     }
-      const response = await axios.put(`http://localhost:8080/api/admin/heritage/${row.id}`, payload)
+      const response = await axios.put(`/api/admin/heritage/${row.id}`, payload)
       
       if (response.data.code === 200) {
         ElMessage.success(`${newEnabled ? '启用' : '禁用'}成功`)

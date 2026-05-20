@@ -24,15 +24,15 @@
         <ul class="footer-contact">
           <li>
             <el-icon><Message /></el-icon>
-            <span>heritage@example.com</span>
+            <span>heritage@yijian.com</span>
           </li>
           <li>
             <el-icon><Phone /></el-icon>
-            <span>400-123-4567</span>
+            <span>188-8888-8888</span>
           </li>
           <li>
             <el-icon><Location /></el-icon>
-            <span>北京市朝阳区文化大道123号</span>
+            <span>重庆邮电大学</span>
           </li>
         </ul>
       </div>
@@ -41,7 +41,7 @@
     <div class="footer-bottom">
       <div class="container">
         <p class="copyright">
-          © 2024 遗见. All Rights Reserved.
+          © 2026 遗见. All Rights Reserved.
         </p>
         <p class="icp">
           传承非遗文化 · 守护民族瑰宝
@@ -151,6 +151,36 @@ import { Message, Phone, Location } from '@element-plus/icons-vue'
   }
 }
 
+.footer-project-info {
+  line-height: 1.8;
+  color: rgba(248, 244, 230, 0.8);
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.footer-tech-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  .tech-tag {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    background: rgba(200, 48, 43, 0.15);
+    color: var(--primary-light);
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid rgba(200, 48, 43, 0.25);
+    transition: all 0.25s ease;
+
+    &:hover {
+      background: rgba(200, 48, 43, 0.25);
+      transform: translateY(-1px);
+    }
+  }
+}
+
 .footer-bottom {
   background: rgba(0, 0, 0, 0.2);
   padding: 20px 0;
@@ -209,6 +239,19 @@ import { Message, Phone, Location } from '@element-plus/icons-vue'
     li {
       margin-bottom: 6px;
       gap: 8px;
+    }
+  }
+
+  .footer-project-info {
+    line-height: 1.5;
+  }
+
+  .footer-tech-tags {
+    gap: 6px;
+
+    .tech-tag {
+      font-size: 11px;
+      padding: 3px 10px;
     }
   }
   

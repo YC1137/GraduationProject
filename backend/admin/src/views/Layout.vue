@@ -37,6 +37,10 @@
           <el-icon><PictureFilled /></el-icon>
           <span>轮播图管理</span>
         </el-menu-item>
+        <el-menu-item index="/announcement">
+          <el-icon><Bell /></el-icon>
+          <span>公告管理</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>
@@ -69,7 +73,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { HomeFilled, User, Document, ChatDotRound, Edit, ArrowDown, CollectionTag, PictureFilled } from '@element-plus/icons-vue'
+import { HomeFilled, User, Document, ChatDotRound, Edit, ArrowDown, CollectionTag, PictureFilled, Bell } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const route = useRoute()

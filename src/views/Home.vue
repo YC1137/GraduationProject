@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="home-page ink-wash-bg">
     <!-- 轮播图 + 公告栏横向布局 -->
     <section class="hero-wrapper container">
@@ -6,13 +6,13 @@
       <div class="hero-carousel-area">
         <el-carousel 
           :interval="5000" 
-          height="460px" 
+          :height="isMobile ? '220px' : '460px'"
           arrow="hover"
           indicator-position="inside"
           :autoplay="true"
           :loop="true"
         >
-          <el-carousel-item v-for="item in carouselItems" :key="item.id">
+          <el-carousel-item v-for="(item, idx) in carouselItems" :key="item.id">
             <div
               class="carousel-item"
               :class="{ 'carousel-clickable': item.linkUrl }"
@@ -23,11 +23,13 @@
                 class="carousel-bg-blur"
                 :style="{ backgroundImage: `url(${item.imageUrl || 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=1920&q=80'})` }"
               ></div>
-              <!-- 前景：完整显示图片 -->
+              <!-- 前景：第一张高优先加载，其余懒加载 -->
               <img
                 class="carousel-img"
                 :src="item.imageUrl || 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=1920&q=80'"
                 :alt="item.title || ''"
+                :fetchpriority="idx === 0 ? 'high' : 'low'"
+                :loading="idx === 0 ? 'eager' : 'lazy'"
               />
             </div>
           </el-carousel-item>
@@ -130,7 +132,7 @@
                 @click="goToDetail(item.id)"
               >
                 <div class="marquee-card">
-                  <img :src="item.sidebarImage" :alt="item.name" />
+                  <img :src="item.sideImageUrl" :alt="item.name" loading="lazy" />
                   <div class="marquee-card-overlay">
                     <span class="marquee-card-name">{{ item.name }}</span>
                   </div>
@@ -143,7 +145,7 @@
                 @click="goToDetail(item.id)"
               >
                 <div class="marquee-card">
-                  <img :src="item.sidebarImage" :alt="item.name" />
+                  <img :src="item.sideImageUrl" :alt="item.name" loading="lazy" />
                   <div class="marquee-card-overlay">
                     <span class="marquee-card-name">{{ item.name }}</span>
                   </div>
@@ -180,17 +182,69 @@
         </div>
         <!-- 右侧：公告栏 -->
         <div class="notice-board notice-board-featured">
-          <h3 class="notice-board-title">平台公告</h3>
-          <div class="notice-list">
-            <div class="notice-item" v-for="notice in notices" :key="notice.id">
-              <div class="notice-tag" :class="notice.type">{{ notice.tag }}</div>
-              <div class="notice-content">
-                <p class="notice-title">{{ notice.title }}</p>
-                <span class="notice-date">{{ notice.date }}</span>
+          <!-- 标题栏 -->
+          <div class="notice-board-header">
+            <div class="notice-board-title-wrap">
+              <span class="notice-board-line"></span>
+              <h3 class="notice-board-title">平台公告</h3>
+            </div>
+            <span class="notice-count-badge">{{ notices.length }} 条</span>
+          </div>
+          <!-- 空状态 -->
+          <div v-if="notices.length === 0" class="notice-empty">
+            <span>暂无公告</span>
+          </div>
+          <!-- 公告列表 -->
+          <div class="notice-list" v-else>
+            <div
+              class="notice-item"
+              v-for="(notice, index) in notices"
+              :key="notice.id"
+              :class="{ 'notice-item-clickable': notice.content }"
+              @click="notice.content && openNotice(notice)"
+            >
+              <span class="notice-index" :class="index < 3 ? 'notice-index-hot' : ''">{{ index + 1 }}</span>
+              <div class="notice-main">
+                <div class="notice-top-row">
+                  <span class="notice-tag" :class="notice.type">{{ notice.tag }}</span>
+                  <p class="notice-title">{{ notice.title }}</p>
+                </div>
+                <div class="notice-meta">
+                  <span class="notice-date">{{ notice.date }}</span>
+                  <span v-if="notice.content" class="notice-read-more">查看详情 ›</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
+
+        <!-- 公告详情弹窗 -->
+        <el-dialog
+          v-model="noticeDialogVisible"
+          width="580px"
+          class="notice-detail-dialog"
+          :show-close="true"
+          :append-to-body="false"
+          align-center
+        >
+          <template #header>
+            <div class="notice-dialog-header">
+              <div class="notice-dialog-tag-row">
+                <el-tag :type="currentNotice.type" size="small" effect="light">{{ currentNotice.tag }}</el-tag>
+                <span class="notice-dialog-date">
+                  <el-icon style="margin-right:3px;vertical-align:-2px"><Calendar /></el-icon>{{ currentNotice.date }}
+                </span>
+              </div>
+              <h2 class="notice-dialog-title">{{ currentNotice.title }}</h2>
+            </div>
+          </template>
+          <div class="notice-detail-body">
+            <div class="notice-detail-content">{{ currentNotice.content }}</div>
+          </div>
+          <template #footer>
+            <el-button @click="noticeDialogVisible = false" style="width:100px">关 闭</el-button>
+          </template>
+        </el-dialog>
       </div>
     </section>
 
@@ -203,6 +257,17 @@
       
       <div class="category-tabs">
         <el-tabs v-model="activeTab" @tab-click="handleTabClick">
+          <el-tab-pane label="按地域" name="region">
+            <div class="region-map-container">
+              <ChinaMap
+                ref="homeMapRef"
+                v-model="homeMapRegion"
+                :region-count-map="geoRegionCountMap"
+                @change="handleRegionMapSelect"
+              />
+            </div>
+          </el-tab-pane>
+
           <el-tab-pane label="按类别" name="category">
             <div class="category-grid">
               <div 
@@ -217,17 +282,6 @@
                 <h3 class="category-name">{{ cat.name }}</h3>
                 <p class="category-count">{{ cat.count }} 个项目</p>
               </div>
-            </div>
-          </el-tab-pane>
-          
-          <el-tab-pane label="按地域" name="region">
-            <div class="region-map-container">
-              <ChinaMap
-                ref="homeMapRef"
-                v-model="homeMapRegion"
-                :region-count-map="geoRegionCountMap"
-                @change="handleRegionMapSelect"
-              />
             </div>
           </el-tab-pane>
           
@@ -276,9 +330,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
+import request from '@/api/request'
 import { useHeritageStore } from '@/stores/heritage'
 import HeritageCard from '@/components/heritage/HeritageCard.vue'
 import ChinaMap from '@/components/common/ChinaMap.vue'
@@ -307,42 +362,94 @@ import {
   Cherry,
   Orange,
   Apple,
-  Pear
+  Pear,
+  Calendar
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const heritageStore = useHeritageStore()
 
 const searchKeyword = ref('')
-const activeTab = ref('category')
+const activeTab = ref('region')
 const featuredItems = ref([])
 
-// 公告栏数据
-const notices = ref([
-  { id: 1, tag: '通知', type: 'info',    title: '平台正式上线，欢迎广大非遗爱好者注册体验！', date: '2025-03-20' },
-  { id: 2, tag: '活动', type: 'primary', title: '2025年非遗文化节线上知识竞答活动开始报名', date: '2025-03-18' },
-  { id: 3, tag: '更新', type: 'success', title: '新增50余项国家级非遗项目数据，内容持续扩充中', date: '2025-03-15' },
-  { id: 4, tag: '公告', type: 'warning', title: '关于非遗数字化保护成果展览征集工作的通知', date: '2025-03-10' },
-  { id: 5, tag: '活动', type: 'primary', title: '非遗传承人线上直播讲堂第三期即将开播', date: '2025-03-08' },
-  { id: 6, tag: '通知', type: 'info',    title: '平台数据库完成第二次整体更新，新增地域分类', date: '2025-03-01' },
-  { id: 7, tag: '公告', type: 'warning', title: '诚邀各地非遗传承人入驻平台，共建数字非遗库', date: '2025-02-25' },
-])
+// 公告栏数据（从后端接口加载）
+const notices = ref([])
+const noticeDialogVisible = ref(false)
+const currentNotice = ref({})
+
+const openNotice = (notice) => {
+  currentNotice.value = notice
+  noticeDialogVisible.value = true
+}
+
+const loadNotices = async () => {
+  try {
+    const backendBase = `${window.location.origin}/api`
+    const res = await axios.get(`${backendBase}/announcement/list`)
+    if (res.data?.code === 200 && Array.isArray(res.data.data)) {
+      notices.value = res.data.data.map(item => ({
+        id: item.id,
+        tag: item.tag,
+        type: item.type,
+        title: item.title,
+        content: item.content || '',
+        date: item.pubDate || ''
+      }))
+    }
+  } catch {
+    // 接口失败时保持空列表，不影响页面
+  }
+}
 
 // 轮播图数据（优先从 Banner 接口读取，失败则用非遗项目）
 const carouselItems = ref([])
 
-const loadBanners = async () => {
+// 轮播图缓存 key 与 TTL（30 分钟）
+const BANNER_CACHE_KEY      = 'banner_list_cache'
+const BANNER_CACHE_TIME_KEY = 'banner_list_cache_time'
+const BANNER_CACHE_TTL      = 30 * 60 * 1000
+
+const readBannerCache = () => {
   try {
-    const res = await axios.get('http://localhost:8080/api/banner/list')
-    const list = res.data?.data || []
+    const time = parseInt(localStorage.getItem(BANNER_CACHE_TIME_KEY) || '0', 10)
+    if (Date.now() - time > BANNER_CACHE_TTL) return null
+    const raw = localStorage.getItem(BANNER_CACHE_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
+const writeBannerCache = (data) => {
+  try {
+    localStorage.setItem(BANNER_CACHE_KEY, JSON.stringify(data))
+    localStorage.setItem(BANNER_CACHE_TIME_KEY, String(Date.now()))
+  } catch {
+    // 容量不足时忽略
+  }
+}
+
+const loadBanners = async () => {
+  // 先读缓存
+  const cached = readBannerCache()
+  if (cached && cached.length > 0) {
+    carouselItems.value = cached
+    return true
+  }
+  try {
+    const res = await request.get('/banner/list')
+    const list = Array.isArray(res) ? res : (res?.data || [])
     if (list.length > 0) {
-      carouselItems.value = list.map(b => ({
+      const mapped = list.map(b => ({
         id: b.id,
         imageUrl: b.imageUrl,
         linkUrl: b.linkUrl || null,
         title: b.title || '',
         slideInterval: b.interval || 5000
       }))
+      carouselItems.value = mapped
+      writeBannerCache(mapped)
       return true
     }
   } catch (e) {
@@ -357,6 +464,12 @@ const categories = ref([])
 const regions = ref([])
 
 const levels = ref([])
+
+// 响应式：是否手机端
+const isMobile = ref(window.innerWidth <= 768)
+const onResize = () => { isMobile.value = window.innerWidth <= 768 }
+window.addEventListener('resize', onResize)
+onUnmounted(() => window.removeEventListener('resize', onResize))
 
 // 验证图片URL是否安全
 const validateImageUrl = (url) => {
@@ -418,10 +531,25 @@ const validateId = (id) => {
   return null
 }
 
-// 修复图片 URL：将 localhost 替换为当前访问的主机名，解决手机端无法加载的问题
+// 修复图片 URL：将 localhost:port 替换为当前访问的主机（含端口），解决手机端/远程访问无法加载的问题
 const fixImageUrl = (url) => {
   if (!url || typeof url !== 'string') return url
-  return url.replace(/localhost/g, window.location.hostname)
+  try {
+    const parsed = new URL(url)
+    const currentHost = window.location.hostname
+    const isLocalPage = ['localhost', '127.0.0.1'].includes(currentHost)
+    if (parsed.hostname === 'localhost' && !isLocalPage) {
+      return `${window.location.origin}${parsed.pathname}${parsed.search}`
+    }
+  } catch {
+    return url
+  }
+  return url
+}
+
+const getSidebarImageUrl = (item) => {
+  const image = item?.sidebarImage || item?.sidebar_image
+  return image ? fixImageUrl(image) : null
 }
 
 const getLevelIcon = (name) => {
@@ -472,7 +600,7 @@ const features = ref([
   },
   {
     title: '多媒体体验',
-    description: '图片、视频、音频、3D模型，多维度感受非遗文化',
+    description: '图片、视频、音频、多维度AI化，立体化感受非遗文化',
     icon: 'VideoCamera'
   },
   {
@@ -482,116 +610,151 @@ const features = ref([
   },
   {
     title: '知识测验',
-    description: '寓教于乐，在互动中学习和传承非遗知识',
+    description: '寓教于乐，在互动中学习和传承非遗知识，并获取非遗数字藏品',
     icon: 'TrophyBase'
   }
 ])
 
+// 侧栏图项目列表
+const sidebarAllItems = ref([])
+
+// ─── 首页计算结果缓存（热门项目 + 非遗风采），TTL 30 分钟 ────────────────────
+const HOME_CACHE_KEY      = 'home_computed_cache_v3'
+const HOME_CACHE_TIME_KEY = 'home_computed_cache_time_v3'
+const HOME_CACHE_TTL      = 30 * 60 * 1000
+
+const readHomeCache = () => {
+  try {
+    const time = parseInt(localStorage.getItem(HOME_CACHE_TIME_KEY) || '0', 10)
+    if (Date.now() - time > HOME_CACHE_TTL) return null
+    const raw = localStorage.getItem(HOME_CACHE_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
+const writeHomeCache = (data) => {
+  try {
+    localStorage.setItem(HOME_CACHE_KEY, JSON.stringify(data))
+    localStorage.setItem(HOME_CACHE_TIME_KEY, String(Date.now()))
+  } catch {
+    // 容量不足时忽略
+  }
+}
+
+// 从列表数据计算首页展示内容，并写入缓存
+const computeAndCacheHomeData = (list, bannerLoaded) => {
+  const categoryIcons = {
+    '传统技艺': 'Brush', '传统戏剧': 'Film', '传统美术': 'Picture',
+    '传统音乐': 'Headset', '民俗': 'Calendar', '传统医药': 'FirstAidKit'
+  }
+  const validList = list.filter(item =>
+    item && validateId(item.id) !== null &&
+    typeof item.name === 'string' && item.name.trim().length > 0
+  )
+  const sortedByHot = [...validList].sort((a, b) => (b.views || 0) - (a.views || 0))
+  const featured = sortedByHot.slice(0, 6)
+
+  if (!bannerLoaded && featured.length > 0) {
+    const remainingList = validList.filter(item => !featured.find(f => f.id === item.id))
+    const shuffled = shuffleArray(remainingList.length >= 3 ? remainingList : validList)
+    carouselItems.value = shuffled.slice(0, 3).map(item => ({
+      id: item.id,
+      imageUrl: fixImageUrl(validateImageUrl(item.thumbnail)),
+      linkUrl: `/heritage/${item.id}`,
+      title: sanitizeText(item.name || '')
+    }))
+  }
+
+  const categoryCount = {}, regionCount = {}, levelCount = {}
+  validList.forEach(item => {
+    if (item.category && typeof item.category === 'string')
+      categoryCount[item.category] = (categoryCount[item.category] || 0) + 1
+    if (item.region && typeof item.region === 'string' && /^[\u4e00-\u9fa5]+$/.test(item.region))
+      regionCount[item.region] = (regionCount[item.region] || 0) + 1
+    if (item.level && typeof item.level === 'string' && ['国家级', '省级', '市级'].includes(item.level))
+      levelCount[item.level] = (levelCount[item.level] || 0) + 1
+  })
+
+  const categoriesData = Object.keys(categoryCount).map(name => ({
+    name: sanitizeText(name), count: categoryCount[name] || 0, icon: categoryIcons[name] || 'Star'
+  }))
+  const regionsData = Object.keys(regionCount).map(name => ({
+    name: sanitizeText(name), count: regionCount[name] || 0, fullPinyin: getFullPinyin(name)
+  }))
+  const levelsData = Object.keys(levelCount).map(name => ({
+    name: sanitizeText(name), count: levelCount[name] || 0
+  }))
+
+  const rawSidebar = validList
+    .map(item => {
+      const sideImageUrl = getSidebarImageUrl(item)
+      return { ...item, sidebarImage: sideImageUrl, sideImageUrl }
+    })
+    .filter(item => item.sideImageUrl)
+  const minCount = 20
+  const sidebarData = []
+  if (rawSidebar.length > 0) {
+    for (let i = 0; i < Math.max(minCount, rawSidebar.length); i++) {
+      const src = rawSidebar[i % rawSidebar.length]
+      sidebarData.push({ ...src, _fillIdx: i })
+    }
+  }
+
+  // 写入响应式数据
+  featuredItems.value  = featured
+  categories.value     = categoriesData
+  regions.value        = regionsData
+  levels.value         = levelsData
+  sidebarAllItems.value = sidebarData
+
+  // 写入 localStorage 缓存
+  writeHomeCache({ featured, categoriesData, regionsData, levelsData, sidebarData })
+}
+
 // 获取热门项目和统计数据
 onMounted(async () => {
-  // 优先从 Banner 管理接口加载轮播图
+  loadNotices()
+
+  // ① 优先从 Banner 管理接口加载轮播图（含 localStorage 缓存）
   const bannerLoaded = await loadBanners()
 
-  try {
-    const list = await heritageStore.fetchHeritageList()
-    
-    // 验证数据完整性
-    if (!Array.isArray(list)) {
-      console.error('Invalid heritage list data')
-      return
+  // 对第一张轮播图动态注入 <link rel="preload">，让浏览器提前下载大图
+  if (carouselItems.value.length > 0 && carouselItems.value[0].imageUrl) {
+    const existingPreload = document.querySelector('link[data-carousel-preload]')
+    if (!existingPreload) {
+      const link = document.createElement('link')
+      link.rel = 'preload'
+      link.as = 'image'
+      link.href = carouselItems.value[0].imageUrl
+      link.setAttribute('data-carousel-preload', '1')
+      document.head.appendChild(link)
     }
-    
-    // 热门项目：根据点赞数和收藏数排序，取前3个
-    const validList = list.filter(item => {
-      // 验证每个项目的必需字段
-      return item && 
-             validateId(item.id) !== null &&
-             typeof item.name === 'string' &&
-             item.name.trim().length > 0
-    })
-    
-    const sortedByHot = [...validList].sort((a, b) => {
-      return (b.views || 0) - (a.views || 0)
-    })
-    featuredItems.value = sortedByHot.slice(0, 6)
-    
-    // 轮播图：仅当 Banner 接口没有数据时，降级用非遗项目图片
-    if (!bannerLoaded) {
-      const remainingList = validList.filter(item => !featuredItems.value.find(f => f.id === item.id))
-      const shuffledRemaining = shuffleArray(remainingList.length >= 3 ? remainingList : validList)
-      carouselItems.value = shuffledRemaining.slice(0, 3).map(item => ({
-        id: item.id,
-        imageUrl: fixImageUrl(validateImageUrl(item.thumbnail)),
-        linkUrl: `/heritage/${item.id}`,
-        title: sanitizeText(item.name || '')
-      }))
-    }
-    
-    // 动态计算分类统计
-    const categoryIcons = {
-      '传统技艺': 'Brush',
-      '传统戏剧': 'Film',
-      '传统美术': 'Picture',
-      '传统音乐': 'Headset',
-      '民俗': 'Calendar',
-      '传统医药': 'FirstAidKit'
-    }
-    
-    const categoryCount = {}
-    const regionCount = {}
-    const levelCount = {}
-    
-    validList.forEach(item => {
-      // 验证并统计类别
-      if (item.category && typeof item.category === 'string') {
-        categoryCount[item.category] = (categoryCount[item.category] || 0) + 1
-      }
-      // 验证并统计地域
-      if (item.region && typeof item.region === 'string' && /^[\u4e00-\u9fa5]+$/.test(item.region)) {
-        regionCount[item.region] = (regionCount[item.region] || 0) + 1
-      }
-      // 验证并统计级别
-      if (item.level && typeof item.level === 'string' && ['国家级', '省级', '市级'].includes(item.level)) {
-        levelCount[item.level] = (levelCount[item.level] || 0) + 1
-      }
-    })
-    
-    // 转换为数组格式
-    categories.value = Object.keys(categoryCount).map(name => ({
-      name: sanitizeText(name),
-      count: categoryCount[name] || 0,
-      icon: categoryIcons[name] || 'Star'
-    }))
-    
-    regions.value = Object.keys(regionCount).map(name => ({
-      name: sanitizeText(name),
-      count: regionCount[name] || 0,
-      fullPinyin: getFullPinyin(name)
-    }))
-    
-    levels.value = Object.keys(levelCount).map(name => ({
-      name: sanitizeText(name),
-      count: levelCount[name] || 0
-    }))
-
-    // 收集有侧栏图的项目，用于横向滚动带
-    const rawSidebar = validList.filter(item => item.sidebarImage)
-    if (rawSidebar.length > 0) {
-      // 生成足够多的项目保证滚动流畅（至少20张）
-      const minCount = 20
-      const seq = []
-      for (let i = 0; i < Math.max(minCount, rawSidebar.length); i++) {
-        const src = rawSidebar[i % rawSidebar.length]
-        seq.push({ ...src, sidebarImage: fixImageUrl(src.sidebarImage), _fillIdx: i })
-      }
-      sidebarAllItems.value = seq
-    } else {
-      sidebarAllItems.value = []
-    }
-  } catch (error) {
-    console.error('Error loading heritage data:', error)
-    // 可以在这里添加错误处理，比如显示错误提示
   }
+
+  // ② 尝试从 localStorage 读取首页计算结果缓存（热门项目 + 非遗风采）
+  const homeCache = readHomeCache()
+  if (homeCache) {
+    featuredItems.value   = homeCache.featured       || []
+    categories.value      = homeCache.categoriesData || []
+    regions.value         = homeCache.regionsData    || []
+    levels.value          = homeCache.levelsData     || []
+    sidebarAllItems.value = homeCache.sidebarData    || []
+  } else {
+    try {
+      const list = await heritageStore.fetchHeritageList()
+      if (!Array.isArray(list)) return
+      computeAndCacheHomeData(list, bannerLoaded)
+    } catch (error) {
+      console.error('Error loading heritage data:', error)
+    }
+  }
+
+  // 默认激活"按地域"Tab，页面加载后触发地图 resize 确保正常渲染
+  nextTick(() => {
+    homeMapRef.value?.resize()
+  })
 })
 
 const handleSearch = () => {
@@ -610,8 +773,6 @@ const goToDetail = (id) => {
   const validId = validateId(id)
   if (validId !== null) {
     router.push(`/detail/${validId}`)
-  } else {
-    console.error('Invalid ID:', id)
   }
 }
 
@@ -689,8 +850,7 @@ const handleTabClick = (tab) => {
   }
 }
 
-// 侧栏图项目列表
-const sidebarAllItems = ref([])
+
 
 </script>
 
@@ -838,7 +998,10 @@ const sidebarAllItems = ref([])
   background: #fff;
   border: 1px solid #e8dfc5;
   border-radius: 10px;
-  padding: 10px 14px 8px;
+  padding: 16px 20px;
+  height: 520px;
+  display: flex;
+  flex-direction: column;
 }
 
 .category-grid {
@@ -1121,64 +1284,253 @@ const sidebarAllItems = ref([])
 .notice-board {
   background: #fff;
   border-radius: 16px;
-  padding: 24px 20px;
+  padding: 0;
   box-shadow: var(--shadow-sm);
-  border: 1px solid rgba(0,0,0,.06);
+  border: 1px solid rgba(0,0,0,.07);
+  overflow: hidden;
+}
+
+.notice-board-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px 13px;
+  background: #fafafa;
+  border-bottom: 1px solid rgba(0,0,0,.07);
+}
+
+.notice-board-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.notice-board-line {
+  width: 3px;
+  height: 16px;
+  border-radius: 2px;
+  background: var(--primary-color);
+  display: inline-block;
+}
+
+.notice-board-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: 0.3px;
+}
+
+.notice-count-badge {
+  background: #f5f5f5;
+  color: #888;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid #e8e8e8;
+}
+
+.notice-empty {
+  padding: 40px 0;
+  text-align: center;
+  color: #bbb;
+  font-size: 13px;
 }
 
 .notice-list {
-  margin-top: 20px;
   display: flex;
   flex-direction: column;
-  gap: 0;
 }
 
 .notice-item {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 14px 0;
-  border-bottom: 1px dashed rgba(0,0,0,.08);
+  gap: 11px;
+  padding: 11px 18px;
+  border-bottom: 1px solid rgba(0,0,0,.05);
   cursor: default;
-  transition: background .2s;
+  transition: background .15s;
 
   &:last-child { border-bottom: none; }
-  &:hover { background: rgba(192,57,43,.03); border-radius: 8px; padding-left: 6px; }
+  &:hover { background: #fafafa; }
+}
+
+.notice-item-clickable {
+  cursor: pointer;
+  &:hover {
+    background: rgba(192,57,43,.04) !important;
+    .notice-read-more { color: var(--primary-color); }
+  }
+}
+
+.notice-index {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  background: #f0f0f0;
+  color: #aaa;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 3px;
+}
+
+.notice-index-hot {
+  background: var(--primary-color);
+  color: #fff;
+}
+
+.notice-main { flex: 1; min-width: 0; }
+
+.notice-top-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin-bottom: 4px;
 }
 
 .notice-tag {
   flex-shrink: 0;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
-  padding: 2px 7px;
-  border-radius: 4px;
+  padding: 1px 5px;
+  border-radius: 3px;
   margin-top: 2px;
 
-  &.info    { background: #e8f4fd; color: #2980b9; }
-  &.primary { background: #fdeaea; color: var(--primary-color); }
-  &.success { background: #eafaf1; color: #27ae60; }
-  &.warning { background: #fef9e7; color: #e67e22; }
-}
-
-.notice-content {
-  flex: 1;
-  min-width: 0;
+  &.info    { background: #eff6ff; color: #3b82f6; }
+  &.primary { background: #fff1f0; color: #c0392b; }
+  &.success { background: #f0fdf4; color: #16a34a; }
+  &.warning { background: #fffbeb; color: #d97706; }
+  &.danger  { background: #fff1f0; color: #dc2626; }
 }
 
 .notice-title {
   font-size: 13px;
   color: var(--text-primary);
-  line-height: 1.6;
-  margin: 0 0 4px;
+  line-height: 1.55;
+  margin: 0;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
+.notice-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .notice-date {
   font-size: 11px;
-  color: var(--text-secondary);
+  color: #bbb;
+}
+
+.notice-read-more {
+  font-size: 11px;
+  color: #ccc;
+  transition: color .15s;
+  white-space: nowrap;
+}
+
+// 弹窗：详情页精细化
+:deep(.notice-detail-dialog) {
+  .el-dialog {
+    background: #fdf6e3;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 4px 8px 28px rgba(120, 90, 40, 0.20), 0 1px 4px rgba(0,0,0,0.08);
+  }
+  .el-dialog__header {
+    padding: 0;
+    margin: 0;
+    background: #fdf6e3;
+  }
+  .el-dialog__body {
+    padding: 0;
+    background: #fdf6e3;
+  }
+  .el-dialog__footer {
+    padding: 8px 28px 22px;
+    text-align: center;
+    background: #fdf6e3;
+    border-top: 1px dashed #d9c89a;
+  }
+  .el-dialog__headerbtn .el-icon {
+    color: #9a7c4f;
+    &:hover { color: #6b4f2a; }
+  }
+  .el-tag {
+    border: none;
+  }
+}
+
+.notice-dialog-header {
+  padding: 26px 28px 18px;
+  border-bottom: 1px dashed #d9c89a;
+  background: transparent;
+  position: relative;
+
+  // 左侧书签竖线
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: linear-gradient(to bottom, #b5883a, #d4a85c);
+    border-radius: 0 2px 2px 0;
+  }
+}
+
+.notice-dialog-tag-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.notice-dialog-date {
+  font-size: 12px;
+  color: #a08050;
+  display: flex;
+  align-items: center;
+}
+
+.notice-dialog-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #3d2c0e;
+  line-height: 1.6;
+  margin: 0;
+  letter-spacing: 0.5px;
+  font-family: "SimSun", "STSong", serif;
+}
+
+.notice-detail-body {
+  padding: 22px 28px 26px;
+  background: #fdf6e3;
+}
+
+.notice-detail-content {
+  font-size: 14px;
+  line-height: 2;
+  color: #4a3520;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 52vh;
+  overflow-y: auto;
+  font-family: "SimSun", "STSong", serif;
+  position: relative;
+  z-index: 1;
+
+  &::-webkit-scrollbar { width: 4px; }
+  &::-webkit-scrollbar-thumb { background: #c9a96e; border-radius: 2px; }
+  &::-webkit-scrollbar-track { background: transparent; }
 }
 
 // 平台特色
@@ -1509,6 +1861,8 @@ const sidebarAllItems = ref([])
     font-size: 0.75rem;
   }
 }
+
+
 
 
 

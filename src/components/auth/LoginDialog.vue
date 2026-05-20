@@ -1,4 +1,4 @@
-<template>
+﻿<template>
     <el-dialog
       v-model="visible"
       :title="isLogin ? '登录' : '注册'"
@@ -31,6 +31,16 @@
           />
         </el-form-item>
         
+        <el-form-item v-if="!isLogin" prop="nickname">
+          <el-input
+            v-model="formData.nickname"
+            placeholder="昵称（选填，评论时显示此名称）"
+            size="large"
+            :prefix-icon="EditPen"
+            clearable
+          />
+        </el-form-item>
+
         <el-form-item v-if="!isLogin" prop="email">
           <el-input
             v-model="formData.email"
@@ -112,7 +122,7 @@
   <script setup>
   import { ref, reactive, watch, computed } from 'vue'
   import { ElMessage } from 'element-plus'
-  import { User, Lock, Message } from '@element-plus/icons-vue'
+  import { User, Lock, Message, EditPen } from '@element-plus/icons-vue'
   import { useAuthStore } from '@/stores/auth'
   import VerifyCode from './VerifyCode.vue'
   
@@ -148,6 +158,7 @@
   // 表单数据
   const formData = reactive({
     username: '',
+    nickname: '',
     email: '',
     password: '',
     confirmPassword: ''
@@ -184,20 +195,13 @@
   // 监听 defaultMode 变化
   watch(() => props.defaultMode, (val) => {
     isLogin.value = val === 'login'
-    console.log('defaultMode changed to:', val, 'isLogin:', isLogin.value)
   })
-  
+
   // 监听对话框关闭时重置表单
   watch(visible, (val) => {
-    console.log('LoginDialog visible changed to:', val)
     if (!val) {
       resetForm()
     }
-  })
-  
-  // 监听 modelValue
-  watch(() => props.modelValue, (val) => {
-    console.log('LoginDialog modelValue changed to:', val)
   })
   
   // 切换登录/注册模式
@@ -210,6 +214,7 @@
   const resetForm = () => {
     formRef.value?.resetFields()
     formData.username = ''
+    formData.nickname = ''
     formData.email = ''
     formData.password = ''
     formData.confirmPassword = ''
@@ -248,7 +253,7 @@
         if (success) {
           // 成功消息已在 authStore 中显示，这里不需要重复显示
           visible.value = false
-          emit('success')
+          emit('success', true)
         } else {
           verifyCodeRef.value?.refresh()
           inputCode.value = ''
@@ -257,13 +262,14 @@
         // 注册逻辑
         const success = await authStore.register({
           username: formData.username,
+          nickname: formData.nickname,
           email: formData.email,
           password: formData.password
         })
         if (success) {
           // 成功消息已在 authStore 中显示，这里不需要重复显示
           visible.value = false
-          emit('success')
+          emit('success', false)
         } else {
           verifyCodeRef.value?.refresh()
           inputCode.value = ''

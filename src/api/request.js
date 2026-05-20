@@ -22,11 +22,12 @@ const getToken = () => {
     return localStorage.getItem('token') || getTokenFromCookie()
 }
 
+// 后端地址：自动根据环境切换（开发用 .env.development，生产用 .env.production）
+const backendBaseURL = import.meta.env.VITE_API_BASE_URL || `http://localhost:8080/api`
+
 // 创建 axios 实例
 const request = axios.create({
-    // 后端服务器地址 - 固定使用 yichengjiang:8080
-    // 如果需要修改为其他地址，请更改下面这行
-    baseURL: 'http://yichengjiang:8080/api',
+    baseURL: backendBaseURL,
     timeout: 10000,
     headers: {
         'Content-Type': 'application/json'
@@ -42,15 +43,6 @@ request.interceptors.request.use(
             config.headers.Authorization = `Bearer ${token}`
         }
         
-        // 打印登录请求的详细信息
-        if (config.url?.includes('/user/login') || config.url?.includes('/user/register')) {
-            console.log('=== 请求拦截器 ===')
-            console.log('请求URL:', config.url)
-            console.log('请求数据:', config.data)
-            console.log('请求头:', config.headers)
-            console.log('=== 请求拦截器结束 ===')
-        }
-        
         return config
     },
     error => {
@@ -62,10 +54,6 @@ request.interceptors.request.use(
 // 响应拦截器
 request.interceptors.response.use(
     response => {
-        console.log('Response interceptor - status:', response.status, 'data:', response.data)
-        console.log('Response config URL:', response.config.url)
-        console.log('Response request data:', response.config.data)
-        
         // 后端返回格式: { code: 200, message: "success", data: ... }
         const res = response.data
         
@@ -81,7 +69,6 @@ request.interceptors.response.use(
             } else {
                 // 对于登录接口的特殊处理，统一错误消息并显示
                 if (response.config.url?.includes('/user/login')) {
-                    console.log('Login error in success handler:', res.message)
                     ElMessage.error('账号或密码错误')
                     // 抛出一个特殊标记的错误，避免在错误拦截器中被重复处理
                     const error = new Error('账号或密码错误')
@@ -105,8 +92,6 @@ request.interceptors.response.use(
         if (error.__handled || error.__isLoginError) {
             return Promise.reject(error)
         }
-
-        console.log('Error interceptor:', error.config?.url, error.message, error.response?.status, error.response?.data)
 
         // 对于登录接口，直接显示账号或密码错误，不进入下面的状态码判断
         if (error.config?.url?.includes('/user/login')) {

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="banner-management">
     <el-card>
       <template #header>

@@ -106,6 +106,7 @@ public class HeritageDTO {
         heritage.setThumbnail(dto.getThumbnail());
         heritage.setVideo(dto.getVideo());
         heritage.setAudio(dto.getAudio());
+        heritage.setSidebarImage(dto.getSidebarImage());
         heritage.setLikes(dto.getLikes());
         heritage.setFavorites(dto.getFavorites());
         heritage.setViews(dto.getViews());

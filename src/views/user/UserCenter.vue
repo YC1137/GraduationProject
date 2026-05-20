@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="user-center">
     <div class="container">
 
@@ -24,7 +24,13 @@
           />
         </div>
         <div class="profile-info">
-          <h2 class="profile-name">{{ authStore.currentUser?.username }}</h2>
+          <div class="profile-name-row">
+            <h2 class="profile-name">{{ authStore.currentUser?.nickname || authStore.currentUser?.username }}</h2>
+            <el-button type="primary" link @click="showEditNickname" class="edit-name-btn">
+              <el-icon><Edit /></el-icon> 编辑
+            </el-button>
+          </div>
+          <p v-if="authStore.currentUser?.nickname" class="profile-account">@{{ authStore.currentUser?.username }}</p>
           <p class="profile-email">{{ authStore.currentUser?.email || '暂无邮箱' }}</p>
           <div class="profile-stats">
             <div class="stat-item">
@@ -142,21 +148,71 @@
         </div>
 
         <div v-else class="asset-grid">
-          <div v-for="asset in digitalAssetList" :key="asset.id" class="asset-card" :class="asset.rarityClass">
+          <div
+            v-for="asset in digitalAssetList"
+            :key="asset.id"
+            class="asset-card"
+            :class="asset.rarityClass"
+            @click="openAssetDetail(asset)"
+          >
             <div class="asset-cover-wrap">
               <img :src="asset.cover" :alt="asset.name" class="asset-cover" @error="handleImgError" />
               <span class="asset-rarity" :class="asset.rarityClass">{{ asset.rarity }}</span>
+              <div class="asset-hover-tip">点击查看详情</div>
             </div>
             <div class="asset-body">
               <h3 class="asset-name">{{ asset.name }}</h3>
               <p class="asset-meta">编号：{{ asset.serial || '-' }}</p>
-              <p class="asset-meta">来源：{{ asset.origin || '-' }}</p>
               <p class="asset-meta">获得时间：{{ asset.ownedAt || '-' }}</p>
-              <p class="asset-meta">交易哈希：{{ shortHash(asset.txHash) }}</p>
               <div class="asset-actions">
                 <span class="chain-status" :class="asset.onChain ? 'ok' : 'pending'">{{ asset.onChain ? '已上链' : '待确认' }}</span>
-                <a v-if="asset.explorerUrl" :href="asset.explorerUrl" target="_blank" rel="noopener noreferrer">查看交易</a>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 藏品详情弹窗 -->
+        <div v-if="detailAsset" class="asset-detail-overlay" @click.self="detailAsset = null">
+          <div class="asset-detail-modal" :class="detailAsset.rarityClass">
+            <button class="detail-close" @click="detailAsset = null">✕</button>
+            <div class="detail-left">
+              <div class="detail-cover-wrap" :class="detailAsset.rarityClass">
+                <img :src="detailAsset.cover" :alt="detailAsset.name" class="detail-cover" @error="handleImgError" />
+                <span class="detail-rarity-badge" :class="detailAsset.rarityClass">{{ detailAsset.rarity }}</span>
+              </div>
+            </div>
+            <div class="detail-right">
+              <h2 class="detail-name">{{ detailAsset.name }}</h2>
+              <p v-if="detailAsset.description" class="detail-desc">{{ detailAsset.description }}</p>
+              <div class="detail-info-list">
+                <div class="detail-info-row"><span class="di-label">藏品编号</span><span class="di-val">{{ detailAsset.serial || '-' }}</span></div>
+                <div class="detail-info-row"><span class="di-label">来　　源</span><span class="di-val">{{ detailAsset.origin || '-' }}</span></div>
+                <div class="detail-info-row"><span class="di-label">获得时间</span><span class="di-val">{{ detailAsset.ownedAt || '-' }}</span></div>
+                <div class="detail-info-row"><span class="di-label">网络</span><span class="di-val">{{ detailAsset.chain === 'Sepolia' ? 'ETH Sepolia 测试网' : (detailAsset.chain || '-') }}</span></div>
+                <div class="detail-info-row center-align">
+                  <span class="di-label">链上状态</span>
+                  <span class="chain-status" :class="detailAsset.onChain ? 'ok' : 'pending'">{{ detailAsset.onChain ? '已上链' : '待确认' }}</span>
+                </div>
+                <div class="detail-info-row">
+                  <span class="di-label">交易哈希</span>
+                  <div class="di-val hash-copy-row" @click="copyText(detailAsset.txHash || '', $event)"><span class="hash-text">{{ detailAsset.txHash || '-' }}</span><span class="copy-btn-text">复制</span></div>
+                </div>
+                <div v-if="detailAsset.blockNumber" class="detail-info-row"><span class="di-label">区块高度</span><span class="di-val">{{ detailAsset.blockNumber }}</span></div>
+                <div v-if="detailAsset.contractAddress" class="detail-info-row">
+                  <span class="di-label">合约地址</span>
+                  <div class="di-val hash-copy-row" @click="copyText(detailAsset.contractAddress, $event)">
+                    <span class="hash-text">{{ detailAsset.contractAddress }}</span>
+                    <span class="copy-btn-text">复制</span>
+                  </div>
+                </div>
+              </div>
+              <a
+                v-if="detailAsset.explorerUrl"
+                :href="detailAsset.explorerUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="detail-explorer-btn"
+              >在区块链浏览器中查看 →</a>
             </div>
           </div>
         </div>
@@ -165,6 +221,19 @@
 
     </div>
   </div>
+
+  <!-- 编辑昵称弹窗 -->
+  <el-dialog v-model="editNicknameVisible" title="修改昵称" width="440px" :close-on-click-modal="false" class="edit-nickname-dialog">
+    <el-form label-width="0">
+      <el-form-item>
+        <el-input v-model="editNicknameValue" placeholder="请输入昵称（2-20个字符，支持中英文）" maxlength="20" clearable @keyup.enter="handleSaveNickname" />
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <el-button @click="editNicknameVisible = false">取消</el-button>
+      <el-button type="primary" :loading="editNicknameLoading" @click="handleSaveNickname">保存</el-button>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup>
@@ -173,8 +242,9 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useUserStore } from '@/stores/user'
 import { getUserFavoritesDetail, getUserLikesDetail } from '@/api/user'
-import { getUserDigitalAssets } from '@/api/digitalAsset'
+import { getUserDigitalAssets, getDigitalCollectionList } from '@/api/digitalAsset'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Edit } from '@element-plus/icons-vue'
 
 
 const router = useRouter()
@@ -187,6 +257,25 @@ const loading = ref(false)
 const favoriteList = ref([])
 const likeList = ref([])
 const digitalAssetList = ref([])
+const detailAsset = ref(null)
+// itemId -> description 映射缓存
+const collectionDescMap = ref({})
+
+const openAssetDetail = async (asset) => {
+  detailAsset.value = { ...asset, description: collectionDescMap.value[asset.itemId] || '' }
+  // 若还没加载过描述，异步补充
+  if (asset.itemId && !collectionDescMap.value[asset.itemId]) {
+    try {
+      const list = await getDigitalCollectionList()
+      if (Array.isArray(list)) {
+        list.forEach(item => { collectionDescMap.value[item.id] = item.description || '' })
+      }
+      if (detailAsset.value && detailAsset.value.itemId === asset.itemId) {
+        detailAsset.value = { ...detailAsset.value, description: collectionDescMap.value[asset.itemId] || '' }
+      }
+    } catch { /* 忽略 */ }
+  }
+}
 
 
 // 头像上传
@@ -210,6 +299,28 @@ const handleAvatarChange = async (e) => {
   e.target.value = ''
 }
 
+// 编辑昵称
+const editNicknameVisible = ref(false)
+const editNicknameValue = ref('')
+const editNicknameLoading = ref(false)
+
+const showEditNickname = () => {
+  editNicknameValue.value = authStore.currentUser?.nickname || ''
+  editNicknameVisible.value = true
+}
+
+const handleSaveNickname = async () => {
+  const nickname = editNicknameValue.value.trim()
+  if (nickname && (nickname.length < 2 || nickname.length > 20)) {
+    ElMessage.warning('昵称长度需要在 2-20 个字符之间')
+    return
+  }
+  editNicknameLoading.value = true
+  await authStore.updateNickname(nickname)
+  editNicknameLoading.value = false
+  editNicknameVisible.value = false
+}
+
 const currentList = computed(() =>
   activeTab.value === 'favorites' ? favoriteList.value : likeList.value
 )
@@ -223,15 +334,12 @@ const switchTab = (tab) => {
 // 加载收藏
 const loadFavorites = async () => {
   const userId = authStore.currentUser?.userId
-  console.log('[UserCenter] loadFavorites userId:', userId, 'currentUser:', authStore.currentUser)
   if (!userId) return
   loading.value = true
   try {
     const result = await getUserFavoritesDetail(userId)
-    console.log('[UserCenter] favorites result:', result)
     favoriteList.value = result || []
   } catch (e) {
-    console.error('[UserCenter] loadFavorites error:', e)
     ElMessage.error('加载收藏失败')
     favoriteList.value = []
   } finally {
@@ -242,15 +350,12 @@ const loadFavorites = async () => {
 // 加载点赞
 const loadLikes = async () => {
   const userId = authStore.currentUser?.userId
-  console.log('[UserCenter] loadLikes userId:', userId, 'currentUser:', authStore.currentUser)
   if (!userId) return
   loading.value = true
   try {
     const result = await getUserLikesDetail(userId)
-    console.log('[UserCenter] likes result:', result)
     likeList.value = result || []
   } catch (e) {
-    console.error('[UserCenter] loadLikes error:', e)
     ElMessage.error('加载点赞失败')
     likeList.value = []
   } finally {
@@ -315,6 +420,27 @@ const goDetail = (id) => {
 const shortHash = (hash) => {
   if (!hash) return ''
   return `${hash.slice(0, 10)}...${hash.slice(-8)}`
+}
+
+const copyText = (text, event) => {
+  const textarea = document.createElement('textarea')
+  textarea.value = text
+  textarea.style.position = 'fixed'
+  textarea.style.opacity = '0'
+  document.body.appendChild(textarea)
+  textarea.select()
+  try {
+    document.execCommand('copy')
+    const el = event.currentTarget.querySelector('.copy-btn-text')
+    if (el) {
+      el.textContent = '已复制!'
+      el.style.color = '#67c23a'
+      setTimeout(() => { el.textContent = '复制'; el.style.color = '' }, 1200)
+    }
+  } catch (e) {
+    ElMessage.warning('复制失败')
+  }
+  document.body.removeChild(textarea)
 }
 
 
@@ -430,11 +556,29 @@ watch(() => route.query.tab, (tab) => {
   flex: 1;
 }
 
+.profile-name-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
 .profile-name {
   font-size: 1.6rem;
   font-weight: 700;
   color: var(--text-primary);
+  margin: 0;
+}
+
+.profile-account {
+  font-size: 0.9rem;
+  font-weight: 400;
+  color: #333;
   margin: 0 0 6px;
+}
+
+.edit-name-btn {
+  font-size: 13px;
 }
 
 .profile-email {
@@ -726,6 +870,23 @@ watch(() => route.query.tab, (tab) => {
   position: relative;
   height: 180px;
   background: var(--bg-dark);
+  cursor: pointer;
+
+  &:hover .asset-hover-tip { opacity: 1; }
+}
+
+.asset-hover-tip {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 14px;
+  opacity: 0;
+  transition: opacity 0.25s;
+  pointer-events: none;
 }
 
 .asset-cover {
@@ -785,7 +946,7 @@ watch(() => route.query.tab, (tab) => {
 
 .chain-status {
   font-size: 12px;
-  padding: 2px 8px;
+  padding: 4px 10px;
   border-radius: 999px;
 
   &.ok {
@@ -797,6 +958,246 @@ watch(() => route.query.tab, (tab) => {
     color: #d97706;
     background: rgba(217,119,6,0.12);
   }
+}
+
+// 藏品详情弹窗
+.asset-detail-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(44, 28, 18, 0.55);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  backdrop-filter: blur(3px);
+}
+
+.asset-detail-modal {
+  position: relative;
+  display: flex;
+  gap: 32px;
+  background: var(--bg-light);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 36px 36px 32px;
+  max-width: 800px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 40px rgba(44,28,18,0.18);
+
+  // 顶部朱红色装饰条（与 profile-card 一致）
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    border-radius: 16px 16px 0 0;
+    background: linear-gradient(90deg, var(--primary-color), var(--primary-light), #e8a87c);
+  }
+
+  // 稀有度边框点缀
+  &.rare      { border-color: rgba(37,99,235,0.3); }
+  &.epic      { border-color: rgba(124,58,237,0.3); }
+  &.legendary { border-color: rgba(200,48,43,0.35); }
+}
+
+.detail-close {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  background: none;
+  border: none;
+  color: var(--text-light);
+  font-size: 18px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.2s, color 0.2s;
+
+  &:hover {
+    background: rgba(200,48,43,0.08);
+    color: var(--primary-color);
+  }
+}
+
+.detail-left {
+  flex-shrink: 0;
+  width: 240px;
+}
+
+.detail-cover-wrap {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid var(--border-color);
+
+  &.rare      { border-color: rgba(37,99,235,0.45); }
+  &.epic      { border-color: rgba(124,58,237,0.45); }
+  &.legendary { border-color: rgba(200,48,43,0.45); }
+}
+
+.detail-cover {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  display: block;
+}
+
+.detail-rarity-badge {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  font-size: 12px;
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+
+  &.common    { background: rgba(100,100,100,0.75); color: #fff; }
+  &.rare      { background: rgba(30,64,175,0.8);   color: #bfdbfe; }
+  &.epic      { background: rgba(91,33,182,0.8);   color: #ddd6fe; }
+  &.legendary { background: rgba(200,48,43,0.82);  color: #fde68a; }
+}
+
+.detail-right {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.detail-name {
+  margin: 8px 0 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: 'Noto Serif SC', '宋体', serif;
+}
+
+.detail-desc {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.8;
+  padding: 10px 14px;
+  background: var(--bg-dark);
+  border-left: 3px solid var(--primary-color);
+  border-radius: 0 6px 6px 0;
+}
+
+.detail-info-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.detail-info-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border-light);
+
+  &.center-align {
+    align-items: center;
+  }
+
+  &:last-child { border-bottom: none; }
+}
+
+.di-label {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  width: 72px;
+  padding: 9px 12px;
+  background: var(--bg-dark);
+  font-size: 12px;
+  border-right: 1px solid var(--border-light);
+}
+
+.di-val {
+  color: var(--text-primary);
+  padding: 9px 14px;
+  word-break: break-all;
+  flex: 1;
+}
+
+.hash-val {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: var(--primary-color);
+}
+
+.hash-copy-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  width: fit-content;
+
+  .hash-text {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    color: var(--primary-color);
+    word-break: break-all;
+    max-width: 320px;
+  }
+
+  .copy-btn-text {
+    font-size: 11px;
+    color: var(--primary-color);
+    background: rgba(200,48,43,0.08);
+    padding: 2px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    transition: background 0.2s;
+    flex-shrink: 0;
+
+    &:hover {
+      background: rgba(200,48,43,0.15);
+    }
+  }
+}
+
+.detail-explorer-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  padding: 8px 18px;
+  background: transparent;
+  border: 1px solid var(--primary-color);
+  color: var(--primary-color);
+  border-radius: 6px;
+  font-size: 13px;
+  text-decoration: none;
+  transition: background 0.2s, color 0.2s;
+  align-self: flex-start;
+
+  &:hover {
+    background: var(--primary-color);
+    color: #fff;
+  }
+}
+
+@media (max-width: 600px) {
+  .asset-detail-modal {
+    flex-direction: column;
+    padding: 24px 20px 20px;
+    gap: 20px;
+
+    &::before { border-radius: 16px 16px 0 0; }
+  }
+  .detail-left { width: 100%; }
 }
 
 // 响应式
@@ -817,5 +1218,36 @@ watch(() => route.query.tab, (tab) => {
 
   .tab-bar { width: 100%; }
   .tab-btn { flex: 1; justify-content: center; }
+}
+
+// 编辑昵称弹窗样式
+.edit-nickname-dialog {
+  :deep(.el-dialog) {
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  }
+
+  :deep(.el-dialog__header) {
+    border-bottom: 1px solid var(--border-color);
+    padding: 20px 24px 16px;
+    margin: 0;
+  }
+
+  :deep(.el-dialog__title) {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-family: 'Noto Serif SC', '宋体', serif;
+  }
+
+  :deep(.el-dialog__body) {
+    padding: 24px;
+  }
+
+  :deep(.el-dialog__footer) {
+    border-top: 1px solid var(--border-color);
+    padding: 16px 24px;
+  }
 }
 </style>

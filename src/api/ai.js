@@ -1,7 +1,10 @@
 const AI_API_KEY = 'sk-aewbwctbqsgqfbeeptoguwpvnkaprajjfxoeqpknnpvpqhod'
-const AI_API_URL = '/ai-proxy/v1/chat/completions'
+// 开发环境走 Vite 代理（避免跨域），生产环境直接请求 SiliconFlow
+const AI_API_URL = import.meta.env.DEV
+  ? '/ai-proxy/v1/chat/completions'
+  : 'https://api.siliconflow.cn/v1/chat/completions'
 const AI_MODEL = 'deepseek-ai/DeepSeek-V3'
-const AI_MODEL_BOMB = 'deepseek-ai/DeepSeek-V3' // V3 无思考过程泄露，响应快，Prompt 足够强
+const AI_MODEL_BOMB = 'deepseek-ai/DeepSeek-R1'
 
 // 通用请求（model 可选，默认用 AI_MODEL）
 const callAI = async (messages, model = AI_MODEL) => {

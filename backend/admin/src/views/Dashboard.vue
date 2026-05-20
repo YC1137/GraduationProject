@@ -93,9 +93,9 @@ const stats = ref({
 const fetchStats = async () => {
   try {
     const [usersRes, heritageRes, quizRes] = await Promise.all([
-      axios.get('http://localhost:8080/api/admin/users'),
-      axios.get('http://localhost:8080/api/heritage/list'),
-      axios.get('http://localhost:8080/api/quiz/questions')
+      axios.get('/api/admin/users'),
+      axios.get('/api/heritage/list'),
+      axios.get('/api/quiz/questions')
     ])
     
     stats.value.userCount = usersRes.data.data?.length || 0

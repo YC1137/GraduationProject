@@ -1,7 +1,7 @@
 // 用户认证状态管理
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { login as apiLogin, register as apiRegister, uploadAvatar as apiUploadAvatar } from '../api/user'
+import { login as apiLogin, register as apiRegister, uploadAvatar as apiUploadAvatar, updateNickname as apiUpdateNickname } from '../api/user'
 import { ElMessage } from 'element-plus'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -29,6 +29,7 @@ export const useAuthStore = defineStore('auth', () => {
             currentUser.value = {
                 userId: response.userId,
                 username: response.username,
+                nickname: response.nickname || null,
                 email: response.email,
                 avatar: response.avatar,
                 walletAddress: response.walletAddress,
@@ -54,12 +55,11 @@ export const useAuthStore = defineStore('auth', () => {
         try {
             // 邮箱为空时传 null，避免后端把空字符串误判为重复邮箱
             const email = userData.email?.trim() || null
-            await apiRegister(userData.username, userData.password, email)
+            const nickname = userData.nickname?.trim() || null
+            await apiRegister(userData.username, userData.password, email, nickname)
             // 注册成功后自动登录
             return await login(userData)
         } catch (error) {
-            console.error('[auth] register error:', error)
-            // 错误消息已在 request.js 中统一弹出，这里不再重复显示
             return false
         }
     }
@@ -81,12 +81,30 @@ export const useAuthStore = defineStore('auth', () => {
         if (!userId) return false
         try {
             const res = await apiUploadAvatar(userId, file)
-            currentUser.value.avatar = res.avatar
+            // 创建新对象触发响应式更新
+            currentUser.value = { ...currentUser.value, avatar: res.avatar }
             localStorage.setItem('currentUser', JSON.stringify(currentUser.value))
             ElMessage.success('头像更新成功')
             return true
         } catch (e) {
             ElMessage.error('头像上传失败')
+            return false
+        }
+    }
+
+    // 更新昵称
+    const updateNickname = async (nickname) => {
+        const userId = currentUser.value?.userId
+        if (!userId) return false
+        try {
+            const res = await apiUpdateNickname(userId, nickname)
+            // 创建新对象触发响应式更新
+            currentUser.value = { ...currentUser.value, nickname: res.nickname }
+            localStorage.setItem('currentUser', JSON.stringify(currentUser.value))
+            ElMessage.success('昵称更新成功')
+            return true
+        } catch (e) {
+            ElMessage.error('昵称更新失败')
             return false
         }
     }
@@ -100,6 +118,7 @@ export const useAuthStore = defineStore('auth', () => {
         login,
         register,
         logout,
-        updateAvatar
+        updateAvatar,
+        updateNickname
     }
 })

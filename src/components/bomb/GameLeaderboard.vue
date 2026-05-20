@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="bomb-leaderboard">
     <!-- 标题行 -->
     <div class="lb-header">

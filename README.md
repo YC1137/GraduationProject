@@ -51,16 +51,26 @@
 │   │   └── request.js              # Axios 实例
 │   ├── views/                      # 页面
 │   │   ├── Home.vue                # 首页
-│   │   ├── Category.vue            # 分类浏览
-│   │   ├── Detail.vue              # 项目详情
-│   │   ├── HeritageMap.vue         # 非遗地图
-│   │   ├── Quiz.vue                # 知识测验
-│   │   ├── AiChat.vue              # AI 问答
-│   │   ├── DigitalCollection.vue   # 数字藏品
-│   │   ├── UserCenter.vue          # 个人中心
-│   │   └── Comments.vue            # 评论管理
+│   │   ├── heritage/               # 非遗相关
+│   │   │   ├── Category.vue        # 分类浏览
+│   │   │   ├── HeritageDetail.vue  # 项目详情
+│   │   │   └── HeritageMap.vue      # 非遗地图
+│   │   ├── game/                   # 游戏互动
+│   │   │   ├── Quiz.vue            # 知识测验
+│   │   │   └── HeritageBomb.vue    # 非遗炸弹游戏
+│   │   ├── chat/                   # 聊天功能
+│   │   │   └── AiChat.vue          # AI 问答
+│   │   ├── collection/             # 藏品相关
+│   │   │   └── DigitalCollection.vue # 数字藏品
+│   │   ├── user/                   # 用户相关
+│   │   │   └── UserCenter.vue      # 个人中心
+│   │   └── admin/                  # 管理功能
+│   │       └── CommentReview.vue   # 评论审核
 │   ├── components/                 # 公共组件
+│   │   └── bomb/                   # 炸弹游戏组件
+│   │       └── GameLeaderboard.vue # 游戏排行榜
 │   ├── stores/                     # Pinia 状态管理
+│   │   └── AppLoading.js           # 应用加载状态
 │   ├── router/                     # 路由配置
 │   └── main.js                     # 入口文件
 ├── chain/                          # 区块链合约（Hardhat）

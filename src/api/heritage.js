@@ -39,10 +39,10 @@ export const postComment = async (data) => {
             const currentUser = JSON.parse(currentUserStr)
             userId = currentUser.userId || 1
         } catch (error) {
-            console.warn('解析用户信息失败，使用默认用户ID:', error)
+            // 解析失败使用默认用户ID
         }
     }
-    
+
     return request.post('/comment', data, { params: { userId } })
 }
 
@@ -61,12 +61,12 @@ export const toggleCommentLike = async (commentId) => {
             const currentUser = JSON.parse(currentUserStr)
             userId = currentUser.userId || 1
         } catch (error) {
-            console.warn('解析用户信息失败，使用默认用户ID:', error)
+            // 解析失败使用默认用户ID
         }
     }
     
     try {
-        return await request.post(`/comment/${commentId}/like`, null, { 
+        return await request.post(`/comment/${commentId}/like`, null, {
             params: { userId }
         })
     } catch (error) {

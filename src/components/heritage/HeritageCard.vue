@@ -1,4 +1,4 @@
-<template>
+﻿<template>
     <div class="heritage-card" @click="goToDetail">
       <!-- 缩略图 -->
       <div class="card-image">

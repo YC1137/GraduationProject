@@ -57,13 +57,19 @@ public class AdminController {
     }
     
     /**
-     * 更新用户角色
+     * 更新用户信息（角色 + 昵称）
      */
     @PutMapping("/user/{id}/role")
     public ApiResponse<User> updateUserRole(@PathVariable Long id, @RequestBody Map<String, String> request) {
         try {
-            User user = userService.updateUserRole(id, request.get("role"));
-            return ApiResponse.success("角色更新成功", user);
+            String role = request.get("role");
+            String nickname = request.get("nickname");
+            User user = userService.updateUserRole(id, role);
+            // 如果传了昵称，额外更新昵称
+            if (nickname != null && !nickname.isBlank()) {
+                user = userService.updateNickname(id, nickname);
+            }
+            return ApiResponse.success("更新成功", user);
         } catch (RuntimeException e) {
             return ApiResponse.error(e.getMessage());
         }

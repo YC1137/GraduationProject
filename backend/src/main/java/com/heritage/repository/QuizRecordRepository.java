@@ -51,4 +51,10 @@ public interface QuizRecordRepository extends JpaRepository<QuizRecord, Long> {
      */
     @Query("SELECT COUNT(qr) FROM QuizRecord qr WHERE qr.userId = :userId AND qr.topicName = :topicName")
     Long countByUserIdAndTopicName(@Param("userId") Long userId, @Param("topicName") String topicName);
+
+    /**
+     * 检查用户在某专题是否有满分记录（score >= totalScore）
+     */
+    @Query("SELECT COUNT(qr) FROM QuizRecord qr WHERE qr.userId = :userId AND qr.topicName = :topicName AND qr.score >= qr.totalScore")
+    Long countPerfectScoreByUserAndTopic(@Param("userId") Long userId, @Param("topicName") String topicName);
 }

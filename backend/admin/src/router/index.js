@@ -8,6 +8,7 @@ import CommentManagement from '../views/CommentManagement.vue'
 import QuizManagement from '../views/QuizManagement.vue'
 import DigitalCollectionManagement from '../views/DigitalCollectionManagement.vue'
 import BannerManagement from '../views/BannerManagement.vue'
+import AnnouncementManagement from '../views/AnnouncementManagement.vue'
 
 const routes = [
   {
@@ -54,13 +55,18 @@ const routes = [
         path: 'banner',
         name: 'BannerManagement',
         component: BannerManagement
+      },
+      {
+        path: 'announcement',
+        name: 'AnnouncementManagement',
+        component: AnnouncementManagement
       }
     ]
   }
 ]
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory('/admin/'),
   routes
 })
 

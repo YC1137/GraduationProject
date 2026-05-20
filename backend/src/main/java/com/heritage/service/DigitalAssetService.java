@@ -5,6 +5,7 @@ import com.heritage.entity.DigitalCollectionItem;
 import com.heritage.entity.User;
 import com.heritage.entity.UserDigitalAsset;
 import com.heritage.repository.DigitalCollectionItemRepository;
+import com.heritage.repository.QuizRecordRepository;
 import com.heritage.repository.UserDigitalAssetRepository;
 import com.heritage.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ public class DigitalAssetService {
     private final UserDigitalAssetRepository userDigitalAssetRepository;
     private final DigitalCollectionItemRepository digitalCollectionItemRepository;
     private final BlockchainMintService blockchainMintService;
+    private final QuizRecordRepository quizRecordRepository;
 
     @Transactional
     public UserDigitalAsset mintAsset(MintDigitalAssetRequest request) {
@@ -48,21 +50,30 @@ public class DigitalAssetService {
             throw new RuntimeException("该藏品已售罄");
         }
 
-        if (user.getWalletAddress() == null || user.getWalletAddress().isBlank()) {
+        // ── 专题满分解锁校验：非测评奖励来源也需要校验（drop 领取同样需满分）──
+        String topicName = item.getTopicName();
+        if (topicName != null && !topicName.isBlank()) {
+            Long perfectCount = quizRecordRepository.countPerfectScoreByUserAndTopic(user.getId(), topicName);
+            if (perfectCount == null || perfectCount == 0) {
+                throw new RuntimeException("请先完成「" + topicName + "」专题的满分测验，才能领取此藏品");
+            }
+        }
+
+        // 测评奖励等场景不强制要求钱包地址
+        boolean isReward = "测评满分奖励".equals(request.getSource());
+        if (!isReward && (user.getWalletAddress() == null || user.getWalletAddress().isBlank())) {
             throw new RuntimeException("用户链地址不存在，请重新登录后重试");
         }
 
         Integer editionNo = generateRandomEditionNo(item.getId(), item.getTotal());
 
-        BlockchainMintService.MintResult chainResult = blockchainMintService.mintToAddress(user.getWalletAddress(), request.getTokenUri());
-
+        // ── 先写库，立即返回，不等待区块链 ──────────────────────────
         UserDigitalAsset asset = new UserDigitalAsset();
         asset.setUserId(user.getId());
         asset.setItemId(item.getId());
         asset.setName(item.getName());
         asset.setEditionNo(editionNo);
         asset.setSerial(formatEditionSerial(item.getSerial(), editionNo, item.getTotal()));
-
         asset.setOrigin(item.getOrigin());
         asset.setCover(item.getCover());
         asset.setRarity(item.getRarity());
@@ -71,18 +82,24 @@ public class DigitalAssetService {
         asset.setOwnedAt(request.getOwnedAt());
         asset.setTokenUri(request.getTokenUri());
 
-        asset.setTokenId(chainResult.getTokenId());
-        asset.setTxHash(chainResult.getTxHash());
-        asset.setBlockNumber(chainResult.getBlockNumber());
-        asset.setContractAddress(chainResult.getContractAddress());
-        asset.setChain(chainResult.getChainName());
-        asset.setExplorerUrl(chainResult.getExplorerUrl());
-        asset.setOnChain(Boolean.TRUE.equals(chainResult.getConfirmed()));
+        // 占位链上信息（异步上链后会回写）
+        asset.setTxHash("PENDING_" + System.currentTimeMillis());
+        asset.setContractAddress("");
+        asset.setChain("Sepolia");
+        asset.setExplorerUrl("");
+        asset.setOnChain(false);
 
         item.setLeft(Math.max(0, item.getLeft() - 1));
         digitalCollectionItemRepository.save(item);
 
-        return userDigitalAssetRepository.save(asset);
+        UserDigitalAsset saved = userDigitalAssetRepository.save(asset);
+
+        // ── 有钱包地址时触发区块链上链（测评奖励与普通购买均走真实上链）────────────────────────────
+        if (user.getWalletAddress() != null && !user.getWalletAddress().isBlank()) {
+            blockchainMintService.mintToAddressAsync(saved.getId(), user.getWalletAddress(), request.getTokenUri());
+        }
+
+        return saved;
     }
 
     public List<UserDigitalAsset> listByUserId(Long userId) {
@@ -121,4 +138,3 @@ public class DigitalAssetService {
         return prefix + " · 第" + editionNo + "/" + total + "份";
     }
 }
-

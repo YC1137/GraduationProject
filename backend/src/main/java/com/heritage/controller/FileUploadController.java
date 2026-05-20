@@ -23,11 +23,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class FileUploadController {
 
-    @Value("${server.port:8080}")
-    private int serverPort;
-
-    @Value("${server.servlet.context-path:/api}")
-    private String contextPath;
+    @Value("${app.address-base-url:http://localhost:8080/api}")
+    private String addressBaseUrl;
 
     private static final Set<String> ALLOWED_TYPES = Set.of(
             "image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"
@@ -65,7 +62,7 @@ public class FileUploadController {
             Files.write(filePath, file.getBytes());
 
             // 返回可访问的 URL（通过 WebMvcConfig 的 /uploads/** 映射）
-            String url = "http://localhost:" + serverPort + contextPath + "/uploads/" + fileName;
+            String url = addressBaseUrl.replaceAll("/+$", "") + "/uploads/" + fileName;
             return ApiResponse.success(url);
         } catch (IOException e) {
             return ApiResponse.error("文件上传失败：" + e.getMessage());

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="ai-chat-page ink-wash-bg">
     <div class="container">
 

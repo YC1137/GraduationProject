@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <canvas
     ref="canvasRef"
     :width="width"

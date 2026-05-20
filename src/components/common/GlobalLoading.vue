@@ -1,4 +1,4 @@
-<template>
+﻿<template>
     <div class="global-loading">
       <div class="loading-content">
         <div class="ink-drop"></div>
@@ -10,7 +10,7 @@
   </template>
   
   <script setup>
-  import { useLoadingStore } from '@/stores/loading'
+  import { useLoadingStore } from '@/stores/AppLoading'
   import { storeToRefs } from 'pinia'
   
   const loadingStore = useLoadingStore()

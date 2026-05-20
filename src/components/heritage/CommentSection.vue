@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <section class="section-block">
     <h2 class="section-title">用户评论</h2>
 
@@ -61,7 +61,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { postComment, getComments, toggleCommentLike as toggleCommentLikeApi } from '@/api/heritage'
 import { useUserStore } from '@/stores/user'
@@ -77,10 +77,15 @@ const newComment = ref('')
 const commentLoading = ref(false)
 const justLiked = ref(null)
 
-// 加载评论（由父组件在 fetchDetail 时调用，或自行初始化）
+// 加载评论（自动在组件挂载时调用）
 const loadComments = async () => {
   comments.value = await getComments(props.heritageId)
 }
+
+// 组件挂载时自动加载评论
+onMounted(() => {
+  loadComments()
+})
 
 // 发表评论
 const handlePostComment = async () => {

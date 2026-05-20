@@ -32,10 +32,12 @@ CREATE TABLE IF NOT EXISTS heritage (
 CREATE TABLE IF NOT EXISTS user (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     username VARCHAR(50) NOT NULL UNIQUE COMMENT '用户名',
+    nickname VARCHAR(50) COMMENT '昵称（选填）',
     password VARCHAR(255) NOT NULL COMMENT '密码',
     email VARCHAR(100) UNIQUE COMMENT '邮箱',
     avatar VARCHAR(500) COMMENT '头像',
     phone VARCHAR(20) COMMENT '手机号',
+    role VARCHAR(20) DEFAULT 'USER' COMMENT '角色(USER/ADMIN)',
     last_login_time DATETIME COMMENT '最后登录时间',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
@@ -88,6 +90,22 @@ CREATE TABLE IF NOT EXISTS quiz_question (
     explanation TEXT COMMENT '解析',
     enabled BOOLEAN NOT NULL DEFAULT true COMMENT '是否启用'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='知识测验题目表';
+
+-- 平台公告表
+CREATE TABLE IF NOT EXISTS announcement (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    tag VARCHAR(20) NOT NULL COMMENT '标签文字',
+    type VARCHAR(20) NOT NULL DEFAULT 'info' COMMENT '标签类型',
+    title VARCHAR(300) NOT NULL COMMENT '公告标题',
+    content TEXT COMMENT '公告正文',
+    pub_date DATE COMMENT '发布日期',
+    sort_order INT NOT NULL DEFAULT 0 COMMENT '排序权重',
+    enabled BOOLEAN NOT NULL DEFAULT true COMMENT '是否启用',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    INDEX idx_sort_order (sort_order),
+    INDEX idx_enabled (enabled)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='平台公告表';
 
 -- 插入初始数据
 INSERT INTO heritage (name, category, region, level, inheritor, description, detail_description, thumbnail, images, video, audio, timeline, likes, favorites, views) VALUES
@@ -287,3 +305,61 @@ ON DUPLICATE KEY UPDATE
   email = 'test@heritage.com',
   avatar = 'https://ui-avatars.com/api/?name=testuser&background=c8302b&color=fff',
   role = 'USER';
+
+-- 数字藏品表
+CREATE TABLE IF NOT EXISTS digital_collection_item (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL COMMENT '藏品名称',
+    serial VARCHAR(50) COMMENT '系列编号',
+    category VARCHAR(50) COMMENT '类别',
+    origin VARCHAR(100) COMMENT '来源',
+    era VARCHAR(30) COMMENT '年代',
+    rarity VARCHAR(20) COMMENT '稀有度中文',
+    rarity_class VARCHAR(20) COMMENT '稀有度class',
+    cover VARCHAR(500) COMMENT '封面图',
+    glow_color VARCHAR(100) COMMENT '光效颜色',
+    description TEXT COMMENT '描述',
+    score_min INT DEFAULT 60 COMMENT '最低门槛分（100为满分专属奖励）',
+    topic_name VARCHAR(100) DEFAULT NULL COMMENT '绑定专题名称（NULL表示不限专题）',
+    total_supply INT DEFAULT 100 COMMENT '总量',
+    left_supply INT DEFAULT 100 COMMENT '剩余',
+    sale_status VARCHAR(20) DEFAULT 'ongoing' COMMENT '发售状态',
+    sale_time DATETIME DEFAULT NULL COMMENT '开售时间（即将开售时用于倒计时）',
+    sort_order INT DEFAULT 0 COMMENT '排序',
+    enabled BOOLEAN NOT NULL DEFAULT true COMMENT '是否上架',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='数字藏品表';
+
+-- 插入示例数字藏品（普通/稀有/史诗，门槛分60）
+INSERT INTO digital_collection_item (name, serial, category, origin, era, rarity, rarity_class, cover, glow_color, description, score_min, total_supply, left_supply, sale_status, sort_order, enabled) VALUES
+('剪纸精灵', 'HC-001', '传统美术', '陕西剪纸', '现代', '普通', 'common',
+ 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400',
+ 'rgba(156,163,175,0.3)',
+ '以陕西剪纸艺术为灵感创作的数字藏品，图案灵动，承载着剪纸的千年技艺。',
+ 60, 500, 500, 'ongoing', 1, true),
+
+('皮影幻影', 'HC-002', '传统戏剧', '陕西皮影', '现代', '稀有', 'rare',
+ 'https://images.unsplash.com/photo-1555421689-d68471e189f2?w=400',
+ 'rgba(37,99,235,0.35)',
+ '皮影戏传承两千年，此藏品将光影艺术凝固为永恒数字印记。',
+ 60, 200, 200, 'ongoing', 2, true),
+
+('苗绣华裳', 'HC-003', '传统技艺', '贵州苗族', '现代', '史诗', 'epic',
+ 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400',
+ 'rgba(124,58,237,0.35)',
+ '苗族刺绣"穿在身上的史诗"，针针皆史诗，此藏品重现其惊艳色彩。',
+ 60, 100, 100, 'ongoing', 3, true),
+
+-- 满分专属奖励藏品（score_min=100）
+('非遗传承·至尊典藏', 'HC-S01', '荣誉藏品', '非遗平台', '2024', '传奇', 'legendary',
+ 'https://images.unsplash.com/photo-1610701596007-11502861dcfa?w=400',
+ 'rgba(217,119,6,0.4)',
+ '知识测评满分专属藏品，全球限量发行100份。持有者是非遗文化的真正守护者，永久铭刻荣耀。',
+ 100, 100, 100, 'ongoing', 0, true),
+
+('昆曲金面', 'HC-S02', '荣誉藏品', '苏州昆曲', '2024', '传奇', 'legendary',
+ 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400',
+ 'rgba(217,119,6,0.4)',
+ '昆曲被誉为"百戏之祖"，此满分荣誉藏品以昆曲金面为原型，象征文化知识的最高荣耀。',
+ 100, 50, 50, 'ongoing', 0, true);

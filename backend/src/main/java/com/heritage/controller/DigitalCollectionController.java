@@ -16,6 +16,21 @@ public class DigitalCollectionController {
 
     private final DigitalCollectionItemService digitalCollectionItemService;
 
+    /**
+     * 根据测评得分查询可领取的藏品（scoreMin <= score，且库存 > 0，且已启用）
+     */
+    @GetMapping("/digital-collection/reward")
+    public ApiResponse<List<DigitalCollectionItem>> listRewardByScore(
+            @RequestParam int score,
+            @RequestParam(required = false, defaultValue = "") String topicName
+    ) {
+        try {
+            return ApiResponse.success(digitalCollectionItemService.listRewardByTopicAndScore(topicName, score));
+        } catch (Exception e) {
+            return ApiResponse.error("查询可领取藏品失败: " + e.getMessage());
+        }
+    }
+
     @GetMapping("/digital-collection/list")
     public ApiResponse<List<DigitalCollectionItem>> listEnabled(
             @RequestParam(required = false) String saleStatus

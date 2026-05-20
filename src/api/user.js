@@ -12,9 +12,9 @@ export const login = async (username, password) => {
 /**
  * 用户注册（密码用服务端RSA公钥加密后传输）
  */
-export const register = async (username, password, email) => {
+export const register = async (username, password, email, nickname) => {
     const encryptedPassword = await rsaEncrypt(password)
-    return request.post('/user/register', { username, encryptedPassword, email })
+    return request.post('/user/register', { username, encryptedPassword, email, nickname })
 }
 
 /**
@@ -69,5 +69,12 @@ export const getUserLikes = async (userId) => {
  */
 export const getUserLikesDetail = async (userId) => {
     return request.get(`/user/likes-detail/${userId}`)
+}
+
+/**
+ * 更新用户昵称
+ */
+export const updateNickname = async (userId, nickname) => {
+    return request.put(`/user/nickname/${userId}`, { nickname })
 }
 

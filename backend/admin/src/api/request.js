@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const request = axios.create({
-  baseURL: 'http://localhost:8080/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
   timeout: 10000
 })
 
@@ -28,7 +28,7 @@ request.interceptors.response.use(
         case 401:
           localStorage.removeItem('adminToken')
           localStorage.removeItem('adminUser')
-          window.location.href = '/login'
+          window.location.href = '/admin/login'
           break
         case 403:
           console.error('没有权限访问')

@@ -39,21 +39,31 @@ public class UserService {
      */
     @Transactional
     public User register(String username, String password, String email) {
+        return register(username, password, email, null);
+    }
+
+    /**
+     * 用户注册（带昵称）
+     */
+    @Transactional
+    public User register(String username, String password, String email, String nickname) {
         if (userRepository.existsByUsername(username)) {
             throw new RuntimeException("用户名已存在");
         }
         if (email != null && !email.isBlank() && userRepository.existsByEmail(email)) {
             throw new RuntimeException("邮箱已被注册");
         }
-        
+
         User user = new User();
         user.setUsername(username);
-        user.setPassword(passwordEncoder.encode(password)); // BCrypt加密
+        user.setPassword(passwordEncoder.encode(password));
         user.setEmail((email != null && !email.isBlank()) ? email : null);
-        user.setAvatar(String.format("https://ui-avatars.com/api/?name=%s&background=c8302b&color=fff", username));
+        String displayName = (nickname != null && !nickname.isBlank()) ? nickname : username;
+        user.setNickname((nickname != null && !nickname.isBlank()) ? nickname : null);
+        user.setAvatar(String.format("https://ui-avatars.com/api/?name=%s&background=c8302b&color=fff", displayName));
         user.setWalletAddress(generateWalletAddress());
-        user.setRole("USER"); // 默认角色为普通用户
-        
+        user.setRole("USER");
+
         return userRepository.save(user);
     }
     
@@ -109,6 +119,16 @@ public class UserService {
     public User updateAvatar(Long id, String avatarUrl) {
         User user = getUserById(id);
         user.setAvatar(avatarUrl);
+        return userRepository.save(user);
+    }
+
+    /**
+     * 更新用户昵称
+     */
+    @Transactional
+    public User updateNickname(Long id, String nickname) {
+        User user = getUserById(id);
+        user.setNickname((nickname != null && !nickname.isBlank()) ? nickname : null);
         return userRepository.save(user);
     }
 

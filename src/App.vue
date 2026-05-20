@@ -8,11 +8,7 @@
       
       <!-- 主内容区域 -->
       <main class="main-content">
-        <router-view v-slot="{ Component }">
-          <transition name="fade" mode="out-in">
-            <component :is="Component" />
-          </transition>
-        </router-view>
+        <router-view />
       </main>
       
       <!-- 全局页脚 -->
@@ -20,6 +16,9 @@
       
       <!-- 返回顶部按钮 -->
       <BackToTop />
+      
+      <!-- 右下角悬浮 AI 聊天（仅 PC 端） -->
+      <AiChatFloat />
       
       <!-- 全局加载动画 -->
       <GlobalLoading v-if="isLoading" />
@@ -31,10 +30,11 @@
   import { useRoute } from 'vue-router'
   import AppHeader from './components/layout/AppHeader.vue'
   import AppFooter from './components/layout/AppFooter.vue'
-  import BackToTop from './components/common/BackToTop.vue'
-  import GlobalLoading from './components/common/GlobalLoading.vue'
-  import SplashScreen from './components/common/SplashScreen.vue'
-  import { useLoadingStore } from './stores/loading'
+import BackToTop from './components/common/BackToTop.vue'
+import GlobalLoading from './components/common/GlobalLoading.vue'
+import SplashScreen from './components/common/SplashScreen.vue'
+import AiChatFloat from './components/common/AiChatFloat.vue'
+  import { useLoadingStore } from './stores/AppLoading'
   import { storeToRefs } from 'pinia'
   
   const route = useRoute()

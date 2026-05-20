@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="action-buttons">
     <!-- 点赞 -->
     <button class="action-btn like-action" :class="{ active: isLiked }" @click="handleLike">

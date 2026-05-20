@@ -12,56 +12,56 @@ const routes = [
     {
         path: '/category',
         name: 'Category',
-        component: () => import('../views/Category.vue'),
+        component: () => import('../views/heritage/Category.vue'),
         meta: { title: '分类浏览' }
     },
     {
         path: '/detail/:id',
         name: 'Detail',
-        component: () => import('../views/Detail.vue'),
+        component: () => import('../views/heritage/HeritageDetail.vue'),
         meta: { title: '项目详情' }
     },
     {
         path: '/quiz',
         name: 'Quiz',
-        component: () => import('../views/Quiz.vue'),
+        component: () => import('../views/game/Quiz.vue'),
         meta: { title: '知识测验', requiresAuth: true }
     },
     {
         path: '/profile',
         name: 'UserCenter',
-        component: () => import('../views/UserCenter.vue'),
+        component: () => import('../views/user/UserCenter.vue'),
         meta: { title: '个人中心', requiresAuth: true }
     },
     {
         path: '/comments',
         name: 'Comments',
-        component: () => import('../views/Comments.vue'),
+        component: () => import('../views/admin/CommentReview.vue'),
         meta: { title: '评论审核' }
     },
     {
         path: '/ai-chat',
         name: 'AiChat',
-        component: () => import('../views/AiChat.vue'),
+        component: () => import('../views/chat/AiChat.vue'),
         meta: { title: 'AI智能问答' }
         // 注意：登录拦截在页面内部处理（展示遮罩），不在路由守卫拦截
     },
     {
         path: '/digital-collection',
         name: 'DigitalCollection',
-        component: () => import('../views/DigitalCollection.vue'),
+        component: () => import('../views/collection/DigitalCollection.vue'),
         meta: { title: '数字藏品' }
     },
     {
         path: '/heritage-map',
         name: 'HeritageMap',
-        component: () => import('../views/HeritageMap.vue'),
+        component: () => import('../views/heritage/HeritageMap.vue'),
         meta: { title: '非遗地图' }
     },
     {
         path: '/bomb',
         name: 'HeritageBomb',
-        component: () => import('../views/HeritageBomb.vue'),
+        component: () => import('../views/game/HeritageBomb.vue'),
         meta: { title: '非遗炸弹', requiresAuth: true }
     }
 ]

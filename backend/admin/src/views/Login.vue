@@ -46,9 +46,8 @@ const handleLogin = async () => {
     await loginFormRef.value.validate()
     loading.value = true
     
-    const response = await axios.post('http://localhost:8080/api/user/login', loginForm.value)
-    console.log('登录响应:', response)
-    
+    const response = await axios.post('/api/user/login', loginForm.value)
+
     if (response.data.code === 200) {
       localStorage.setItem('adminToken', response.data.data.token)
       localStorage.setItem('adminUser', JSON.stringify(response.data.data))

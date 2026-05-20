@@ -1,5 +1,5 @@
-<template>
-    <div class="detail-page" v-loading="loading">
+﻿<template>
+    <div class="detail-page">
       <div class="container" v-if="heritage">
         <!-- 面包屑导航 -->
         <el-breadcrumb separator="/" class="breadcrumb">
@@ -200,22 +200,21 @@ import ActionButtons from '@/components/heritage/ActionButtons.vue'
   const router = useRouter()
   const heritageStore = useHeritageStore()
 
-  // 将 localhost 替换为当前访问的主机名，解决手机端无法加载本地上传图片的问题
+  // 将 localhost:port 替换为当前访问的 origin，解决手机端/远程访问无法加载本地上传图片的问题
   const fixImageUrl = (url) => {
     if (!url || typeof url !== 'string') return url
-    return url.replace(/localhost/g, window.location.hostname)
+    const origin = window.location.origin  // e.g. http://47.121.115.74
+    return url.replace(/http:\/\/localhost(:\d+)?/g, origin)
   }
 
-  const loading = ref(false)
   const heritage = ref(null)
   const recommendList = ref([])
   const commentSectionRef = ref(null)
   const show3DModel = ref(false) // 是否显示3D模型
   const modelContainer = ref(null)
-  
+
   // 获取项目详情
   const fetchDetail = async () => {
-    loading.value = true
     try {
       const id = route.params.id
       heritage.value = await heritageStore.fetchHeritageDetail(id)
@@ -244,7 +243,7 @@ import ActionButtons from '@/components/heritage/ActionButtons.vue'
       ElMessage.error('获取项目详情失败')
       console.error(error)
     } finally {
-      loading.value = false
+
     }
   }
 

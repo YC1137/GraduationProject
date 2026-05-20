@@ -64,11 +64,12 @@ public class UserController {
                     : request.getPassword();
             String email = request.getEmail();
 
-            User user = userService.register(username, password, email);
+            User user = userService.register(username, password, email, request.getNickname());
 
             Map<String, Object> data = new HashMap<>();
             data.put("userId", user.getId());
             data.put("username", user.getUsername());
+            data.put("nickname", user.getNickname());
             data.put("email", user.getEmail());
             data.put("avatar", user.getAvatar());
             data.put("walletAddress", user.getWalletAddress());
@@ -105,6 +106,7 @@ public class UserController {
             Map<String, Object> data = new HashMap<>();
             data.put("userId", user.getId());
             data.put("username", user.getUsername());
+            data.put("nickname", user.getNickname());
             data.put("email", user.getEmail());
             data.put("avatar", user.getAvatar());
             data.put("walletAddress", user.getWalletAddress());
@@ -270,6 +272,24 @@ public class UserController {
         } catch (Exception e) {
             e.printStackTrace();
             return ApiResponse.error("上传异常: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 更新用户昵称
+     */
+    @PutMapping("/nickname/{userId}")
+    public ApiResponse<Map<String, Object>> updateNickname(
+            @PathVariable Long userId,
+            @RequestBody Map<String, String> request) {
+        try {
+            String nickname = request.get("nickname");
+            User user = userService.updateNickname(userId, nickname);
+            Map<String, Object> data = new HashMap<>();
+            data.put("nickname", user.getNickname());
+            return ApiResponse.success("昵称更新成功", data);
+        } catch (RuntimeException e) {
+            return ApiResponse.error(e.getMessage());
         }
     }
 }

@@ -43,8 +43,14 @@ public class DigitalCollectionItem {
     @Column(name = "glow_color", length = 100)
     private String glowColor;
 
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
     @Column(name = "score_min")
     private Integer scoreMin;
+
+    @Column(name = "topic_name", length = 100)
+    private String topicName;
 
     @Column(name = "total_supply")
     private Integer total;
@@ -55,8 +61,8 @@ public class DigitalCollectionItem {
     @Column(name = "sale_status", length = 20)
     private String saleStatus;
 
-    @Column(length = 50)
-    private String countdown;
+    @Column(name = "sale_time")
+    private LocalDateTime saleTime;
 
     @Column(name = "sort_order")
     private Integer sortOrder = 0;

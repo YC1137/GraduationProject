@@ -1,24 +1,30 @@
 package com.heritage.service;
 
+import com.heritage.entity.UserDigitalAsset;
+import com.heritage.repository.UserDigitalAssetRepository;
 import lombok.Data;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import okhttp3.OkHttpClient;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.web3j.abi.FunctionEncoder;
 import org.web3j.abi.datatypes.Address;
 import org.web3j.abi.datatypes.Function;
-import okhttp3.OkHttpClient;
 import org.web3j.abi.datatypes.Utf8String;
 import org.web3j.crypto.Credentials;
 import org.web3j.crypto.WalletUtils;
 import org.web3j.protocol.Web3j;
+import org.web3j.protocol.core.methods.response.EthGetTransactionReceipt;
 import org.web3j.protocol.core.methods.response.EthSendTransaction;
 import org.web3j.protocol.core.methods.response.Log;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
+
+
 import org.web3j.protocol.http.HttpService;
 import org.web3j.tx.RawTransactionManager;
 import org.web3j.tx.TransactionManager;
-import org.web3j.tx.response.PollingTransactionReceiptProcessor;
-import org.web3j.tx.response.TransactionReceiptProcessor;
 import org.web3j.utils.Numeric;
 
 import java.math.BigInteger;
@@ -26,10 +32,14 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class BlockchainMintService {
 
     private static final String TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+
+    private final UserDigitalAssetRepository userDigitalAssetRepository;
 
     @Value("${blockchain.rpc-url}")
     private String rpcUrl;
@@ -46,19 +56,74 @@ public class BlockchainMintService {
     @Value("${blockchain.gas-limit:600000}")
     private Long gasLimit;
 
-    @Value("${blockchain.http-timeout-seconds:60}")
+    @Value("${blockchain.http-timeout-seconds:30}")
     private Long httpTimeoutSeconds;
-
-    @Value("${blockchain.receipt-poll-interval-ms:1500}")
-    private Long receiptPollIntervalMs;
-
-    @Value("${blockchain.receipt-poll-attempts:80}")
-    private Integer receiptPollAttempts;
 
     @Value("${blockchain.platform-private-key}")
     private String platformPrivateKey;
 
-    public MintResult mintToAddress(String toAddress, String tokenUri) {
+    /**
+     * 异步上链：先入库再异步发送交易，成功后回写 txHash/onChain 字段
+     */
+    @Async
+    public void mintToAddressAsync(Long assetId, String toAddress, String tokenUri) {
+        try {
+            MintResult result = doMint(toAddress, tokenUri);
+            // 回写链上信息（交易已发出，等待确认）
+            userDigitalAssetRepository.findById(assetId).ifPresent(asset -> {
+                asset.setTxHash(result.getTxHash());
+                asset.setContractAddress(result.getContractAddress());
+                asset.setChain(result.getChainName());
+                asset.setExplorerUrl(result.getExplorerUrl());
+                asset.setOnChain(false);
+                userDigitalAssetRepository.save(asset);
+                log.info("[区块链] 资产 {} 上链交易已发出: {}", assetId, result.getTxHash());
+            });
+            // 轮询等待交易被确认，最多等 5 分钟
+            waitForConfirmation(assetId, result.getTxHash());
+        } catch (Exception e) {
+            log.warn("[区块链] 资产 {} 上链失败（异步），将保持离线状态: {}", assetId, e.getMessage());
+        }
+    }
+
+    /**
+     * 轮询等待交易收据，确认后回写 onChain=true
+     * 每 10 秒查一次，最多查 30 次（5 分钟）
+     */
+    private void waitForConfirmation(Long assetId, String txHash) {
+        OkHttpClient okHttpClient = new OkHttpClient.Builder()
+                .connectTimeout(httpTimeoutSeconds, TimeUnit.SECONDS)
+                .readTimeout(httpTimeoutSeconds, TimeUnit.SECONDS)
+                .build();
+        Web3j web3j = Web3j.build(new HttpService(rpcUrl, okHttpClient, false));
+        try {
+            for (int i = 0; i < 30; i++) {
+                TimeUnit.SECONDS.sleep(10);
+                EthGetTransactionReceipt receiptResp = web3j.ethGetTransactionReceipt(txHash).send();
+                if (receiptResp.getTransactionReceipt().isPresent()) {
+                    TransactionReceipt receipt = receiptResp.getTransactionReceipt().get();
+                    // status "0x1" 表示成功
+                    if ("0x1".equalsIgnoreCase(receipt.getStatus())) {
+                        userDigitalAssetRepository.findById(assetId).ifPresent(asset -> {
+                            asset.setOnChain(true);
+                            userDigitalAssetRepository.save(asset);
+                            log.info("[区块链] 资产 {} 已确认上链，区块: {}", assetId, receipt.getBlockNumber());
+                        });
+                    } else {
+                        log.warn("[区块链] 资产 {} 交易失败，status={}", assetId, receipt.getStatus());
+                    }
+                    return;
+                }
+            }
+            log.warn("[区块链] 资产 {} 等待确认超时（5分钟），txHash={}", assetId, txHash);
+        } catch (Exception e) {
+            log.warn("[区块链] 资产 {} 轮询确认异常: {}", assetId, e.getMessage());
+        } finally {
+            web3j.shutdown();
+        }
+    }
+
+    private MintResult doMint(String toAddress, String tokenUri) {
         if (platformPrivateKey == null || platformPrivateKey.isBlank()) {
             throw new RuntimeException("平台私钥未配置，无法代用户上链");
         }
@@ -104,20 +169,6 @@ public class BlockchainMintService {
             result.setChainName("Sepolia");
             result.setExplorerUrl("https://sepolia.etherscan.io/tx/" + txHash);
             result.setConfirmed(false);
-
-            try {
-                TransactionReceiptProcessor receiptProcessor = new PollingTransactionReceiptProcessor(web3j, receiptPollIntervalMs, receiptPollAttempts);
-                TransactionReceipt receipt = receiptProcessor.waitForTransactionReceipt(txHash);
-                result.setBlockNumber(receipt.getBlockNumber().toString());
-                result.setTokenId(parseTokenId(receipt.getLogs()));
-                result.setConfirmed(true);
-            } catch (Exception receiptException) {
-                String msg = receiptException.getMessage() == null ? "" : receiptException.getMessage().toLowerCase();
-                if (!msg.contains("timeout")) {
-                    throw receiptException;
-                }
-            }
-
             return result;
         } catch (Exception e) {
             throw new RuntimeException("上链铸造失败: " + e.getMessage(), e);
@@ -149,7 +200,6 @@ public class BlockchainMintService {
         }
         return trimmed;
     }
-
 
     @Data
     public static class MintResult {

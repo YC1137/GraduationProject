@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="heritage-map-page">
     <!-- 页头 -->
     <section class="hm-hero">
@@ -113,6 +113,7 @@ import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import * as echarts from 'echarts'
 import axios from 'axios'
+import request from '@/api/request'
 
 const router = useRouter()
 const mapRef = ref(null)
@@ -160,10 +161,10 @@ const regionCountMap = ref({})
 const loadRegionItems = async (region) => {
   itemsLoading.value = true
   try {
-    const res = await axios.get('http://localhost:8080/api/heritage/list', {
+    const res = await request.get('/heritage/list', {
       params: { region }
     })
-    regionItems.value = (res.data?.data || []).filter(item => item.enabled !== false)
+    regionItems.value = (Array.isArray(res) ? res : (res?.data || [])).filter(item => item.enabled !== false)
   } catch (e) {
     regionItems.value = []
   } finally {
@@ -174,8 +175,8 @@ const loadRegionItems = async (region) => {
 // ── 加载所有省份数量（一次性全量加载统计） ───────────────
 const loadAllRegionCounts = async () => {
   try {
-    const res = await axios.get('http://localhost:8080/api/heritage/list')
-    const list = res.data?.data || []
+    const res = await request.get('/heritage/list')
+    const list = Array.isArray(res) ? res : (res?.data || [])
     const countMap = {}
     list.forEach(item => {
       if (item.region) {

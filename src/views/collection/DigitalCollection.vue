@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="dc-page">
 
     <!-- ===== 顶部 Banner ===== -->
@@ -14,7 +14,7 @@
           <p class="dc-banner-sub">完成知识测验 · 铸造专属非遗数字藏品，让文化传承留存于指间</p>
           <div class="dc-banner-btns">
             <button class="dc-btn-primary" @click="scrollTo('market')">
-              <span>藏品首发</span>
+              <span>藏品领取</span>
               <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
             </button>
             <button class="dc-btn-ghost" @click="scrollTo('mine')">我的藏品</button>
@@ -33,10 +33,10 @@
       </div>
     </section>
 
-    <!-- ===== 藏品首发市场 ===== -->
+    <!-- ===== 藏品领取 ===== -->
     <section class="dc-market container" id="market">
       <div class="dc-section-header">
-        <h2 class="dc-section-title">藏品首发</h2>
+        <h2 class="dc-section-title">藏品领取</h2>
         <div class="dc-tabs">
           <span :class="['dc-tab', { active: marketTab === 'upcoming' }]" @click="marketTab='upcoming'">即将开售</span>
           <span :class="['dc-tab', { active: marketTab === 'ongoing' }]" @click="marketTab='ongoing'">正在发售</span>
@@ -50,6 +50,7 @@
           :key="drop.id"
           class="dc-drop-card"
           :class="drop.rarityClass"
+          @click.stop="openDetail(drop)"
         >
           <div class="drop-img-wrap">
             <img :src="drop.cover" :alt="drop.name" class="drop-img" />
@@ -59,9 +60,16 @@
             <div class="drop-owned-mask" v-if="isOwned(drop.id)">
               <span>✓ 已收藏</span>
             </div>
+            <!-- 锁定遮罩（未完成满分答题） -->
+            <div class="drop-lock-mask" v-else-if="marketTab === 'ongoing' && !isQuizUnlocked(drop)">
+              <div class="lock-mask-inner">
+                <span class="lock-icon">🔒</span>
+                <span class="lock-hint">满分答题解锁</span>
+              </div>
+            </div>
           </div>
           <div class="drop-body">
-            <div class="drop-serial">系列编号：{{ drop.serial }}</div>
+            <div class="drop-serial" v-if="drop.serial">系列编号：{{ drop.serial }}</div>
 
             <h3 class="drop-name">{{ drop.name }}</h3>
             <p class="drop-origin">{{ drop.origin }}</p>
@@ -84,22 +92,30 @@
               <template v-if="marketTab === 'upcoming'">
                 <div class="drop-countdown">
                   <span class="countdown-label">距开售</span>
-                  <span class="countdown-val">{{ drop.countdown }}</span>
+                  <span class="countdown-val">{{ formatCountdown(drop.saleTime) }}</span>
                 </div>
-                <button class="drop-btn reminder-btn">提醒我</button>
+                <button class="drop-btn reminder-btn" @click.stop>提醒我</button>
               </template>
               <template v-else-if="marketTab === 'ongoing'">
-                <button
-                  class="drop-btn claim-btn"
-                  :class="drop.rarityClass"
-                  :disabled="isMinting || isOwned(drop.id) || !authStore.isLoggedIn"
-                  @click="claimDrop(drop)"
-                >
-                  {{ isMinting ? '上链中...' : isOwned(drop.id) ? '已收藏' : authStore.isLoggedIn ? '立即收藏' : '登录后收藏' }}
-                </button>
+                <template v-if="!isQuizUnlocked(drop)">
+                  <button
+                    class="drop-btn lock-btn"
+                    @click.stop="goToQuiz(drop)"
+                  >🔒 去答题解锁</button>
+                </template>
+                <template v-else>
+                  <button
+                    class="drop-btn claim-btn"
+                    :class="drop.rarityClass"
+                    :disabled="isMinting || isOwned(drop.id) || !authStore.isLoggedIn"
+                    @click.stop="claimDrop(drop)"
+                  >
+                    {{ isMinting ? '上链中...' : isOwned(drop.id) ? '已收藏' : authStore.isLoggedIn ? '立即收藏' : '登录后收藏' }}
+                  </button>
+                </template>
               </template>
               <template v-else>
-                <span class="drop-ended-text">已售罄</span>
+                <span class="drop-ended-text">已领完</span>
               </template>
             </div>
           </div>
@@ -132,10 +148,10 @@
       <div class="dc-empty" v-else-if="myCollections.length === 0">
         <div class="dc-empty-inner">
           <div class="dc-empty-icon">🎴</div>
-          <p>还没有藏品，去完成测验或参与首发来获得吧！</p>
+          <p>还没有藏品，去完成测验或领取藏品来获得吧！</p>
           <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
             <button class="dc-btn-primary sm" @click="$router.push('/quiz')">去做测验</button>
-            <button class="dc-btn-ghost sm" @click="scrollTo('market')">首发市场</button>
+            <button class="dc-btn-ghost sm" @click="scrollTo('market')">领取藏品</button>
           </div>
         </div>
       </div>
@@ -147,20 +163,21 @@
           :key="item.itemId + '-' + item.id"
           class="dc-mine-card"
           :class="item.rarityClass"
+          @click="openDetail(item)"
         >
           <div class="mine-card-img-wrap">
             <img :src="item.cover" :alt="item.name" />
             <div class="mine-card-glow" :class="item.rarityClass"></div>
-            <div class="mine-rarity-tag" :class="item.rarityClass">{{ item.rarity }}</div>
           </div>
           <div class="mine-card-body">
-            <div class="mine-serial">份数编号：{{ item.serial }}</div>
+            <div class="mine-rarity-tag" :class="item.rarityClass">{{ item.rarity }}</div>
+            <div class="mine-serial" v-if="item.serial">份数编号：{{ item.serial }}</div>
 
             <h3 class="mine-name">{{ item.name }}</h3>
             <div class="mine-meta">
               <span>{{ item.origin }}</span>
               <span class="mine-source-tag" :class="item.source === 'quiz' ? 'quiz' : 'drop'">
-                {{ item.source === 'quiz' ? '测验获得' : '首发收藏' }}
+                {{ item.source === 'quiz' ? '测验获得' : (item.topicName ? '答题解锁领取' : '领取获得') }}
               </span>
             </div>
             <div class="mine-date">获得时间：{{ item.ownedAt }}</div>
@@ -172,6 +189,61 @@
         </div>
       </div>
     </section>
+
+    <!-- ===== 藏品详情弹窗 ===== -->
+    <transition name="dc-modal">
+      <div class="dc-modal-mask" v-if="showDetailModal" @click.self="showDetailModal=false">
+        <div class="dc-detail-modal" :class="detailItem?.rarityClass">
+          <div class="detail-bg-glow" :class="detailItem?.rarityClass"></div>
+          <button class="detail-close-btn" @click="showDetailModal=false">×</button>
+          <div class="detail-content">
+            <div class="detail-img-wrap">
+              <img :src="detailItem?.cover" :alt="detailItem?.name" class="detail-img" />
+              <div class="detail-img-glow" :class="detailItem?.rarityClass"></div>
+            </div>
+            <div class="detail-info">
+              <div class="detail-rarity" :class="detailItem?.rarityClass">{{ detailItem?.rarity }}</div>
+              <h2 class="detail-name">{{ detailItem?.name }}</h2>
+              <div class="detail-serial">{{ detailItem?.serial }}</div>
+              <div class="detail-attrs">
+                <div class="detail-attr-row" v-if="detailItem?.origin">
+                  <span class="detail-attr-label">来源产地</span>
+                  <span class="detail-attr-val">{{ detailItem?.origin }}</span>
+                </div>
+                <div class="detail-attr-row" v-if="detailItem?.category">
+                  <span class="detail-attr-label">藏品类别</span>
+                  <span class="detail-attr-val">{{ detailItem?.category }}</span>
+                </div>
+                <div class="detail-attr-row" v-if="detailItem?.era">
+                  <span class="detail-attr-label">所属年代</span>
+                  <span class="detail-attr-val">{{ detailItem?.era }}</span>
+                </div>
+                <div class="detail-attr-row" v-if="detailItem?.total">
+                  <span class="detail-attr-label">发行总量</span>
+                  <span class="detail-attr-val">{{ detailItem?.total }} 份</span>
+                </div>
+                <div class="detail-attr-row" v-if="detailItem?.ownedAt">
+                  <span class="detail-attr-label">获得时间</span>
+                  <span class="detail-attr-val">{{ detailItem?.ownedAt }}</span>
+                </div>
+                <div class="detail-attr-row" v-if="detailItem?.source">
+                  <span class="detail-attr-label">获得方式</span>
+                  <span class="detail-attr-val">{{ detailItem?.source === 'quiz' ? '测验获得' : (detailItem?.topicName ? '答题解锁领取' : '领取获得') }}</span>
+                </div>
+              </div>
+              <div class="detail-description" v-if="detailItem?.description">
+                <div class="detail-desc-label">藏品简介</div>
+                <p class="detail-desc-text">{{ detailItem?.description }}</p>
+              </div>
+              <div class="detail-chain" v-if="detailItem?.onChain">
+                <span class="detail-chain-tag">✓ 已上链</span>
+                <a v-if="detailItem?.explorerUrl" :href="detailItem?.explorerUrl" target="_blank" rel="noopener noreferrer">查看交易记录</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </transition>
 
     <!-- ===== 铸造成功弹窗 ===== -->
     <transition name="dc-modal">
@@ -219,11 +291,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useAuthStore } from '../stores/auth'
+import { useAuthStore } from '../../stores/auth'
 import { ElMessage } from 'element-plus'
-import { getDigitalCollectionList, getUserDigitalAssets, mintDigitalAsset } from '../api/digitalAsset'
+import { getDigitalCollectionList, getUserDigitalAssets, mintDigitalAsset } from '../../api/digitalAsset'
+import { getUserHistory } from '../../api/quiz'
 
 const route  = useRoute()
 const router = useRouter()
@@ -243,7 +316,7 @@ const buildTokenURI = (item) => {
     image: item.cover,
     attributes: [
       { trait_type: '稀有度', value: item.rarity },
-      { trait_type: '来源', value: item.source === 'quiz' ? '测验获得' : '首发收藏' },
+      { trait_type: '来源', value: item.source === 'quiz' ? '测验获得' : '领取获得' },
       { trait_type: '编号', value: item.serial }
     ]
   }
@@ -270,6 +343,25 @@ const mintOnChainForItem = async (item) => {
 
 const marketItems = ref([])
 
+// ── 动态倒计时 ─────────────────────────────────────────────────
+// now 每秒更新，模板用 formatCountdown(drop.saleTime) 计算剩余时间
+const now = ref(Date.now())
+let countdownTimer = null
+
+const formatCountdown = (saleTime) => {
+  if (!saleTime) return '待定'
+  const target = new Date(saleTime).getTime()
+  const diff = target - now.value
+  if (diff <= 0) return '即将开售'
+  const days = Math.floor(diff / 86400000)
+  const hours = Math.floor((diff % 86400000) / 3600000).toString().padStart(2, '0')
+  const mins = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0')
+  const secs = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0')
+  return days > 0 ? `${days}天 ${hours}:${mins}:${secs}` : `${hours}:${mins}:${secs}`
+}
+
+
+
 const loadMarketCollections = async () => {
   try {
     const list = await getDigitalCollectionList()
@@ -282,7 +374,7 @@ const loadMarketCollections = async () => {
   }
 }
 
-// ── 首发市场分组 ──────────────────────────────────────────────
+// ── 藏品领取分组 ──────────────────────────────────────────────
 const drops = computed(() => ({
   upcoming: marketItems.value.filter(i => i.saleStatus === 'upcoming'),
   ongoing: marketItems.value.filter(i => i.saleStatus === 'ongoing'),
@@ -325,7 +417,57 @@ const loadMyCollections = async () => {
 
 const isOwned = (id) => myCollections.value.some(c => c.itemId === id)
 
-// ── 首发收藏 ────────────────────────────────────────────────
+// ── 满分解锁检查（从后端答题历史获取，防止 localStorage 伪造）────────────────
+// perfectTopics：用户已满分通过的专题名称集合（从后端加载）
+const perfectTopics = ref(new Set())
+
+const loadPerfectTopics = async () => {
+  const userId = authStore.currentUser?.userId
+  if (!userId) { perfectTopics.value = new Set(); return }
+  try {
+    const history = await getUserHistory(userId)
+    const set = new Set()
+    if (Array.isArray(history)) {
+      history.forEach(r => {
+        if (r.score != null && r.totalScore != null && r.score >= r.totalScore) {
+          set.add(r.topicName)
+        }
+      })
+    }
+    perfectTopics.value = set
+  } catch {
+    perfectTopics.value = new Set()
+  }
+}
+
+const isQuizUnlocked = (drop) => {
+  // 已拥有则视为解锁
+  if (isOwned(drop.id)) return true
+  // 没有绑定专题的藏品无需答题，直接解锁
+  if (!drop.topicName) return true
+  // 从后端加载的满分专题集合中查找
+  return perfectTopics.value.has(drop.topicName)
+}
+
+// 跳转到对应专题的答题页
+const goToQuiz = (drop) => {
+  if (drop.topicName) {
+    router.push(`/quiz?topic=${encodeURIComponent(drop.topicName)}`)
+  } else {
+    router.push('/quiz')
+  }
+}
+
+// ── 藏品详情弹窗 ────────────────────────────────────────────
+const showDetailModal = ref(false)
+const detailItem      = ref(null)
+
+const openDetail = (item) => {
+  detailItem.value = item
+  showDetailModal.value = true
+}
+
+// ── 藏品领取 ────────────────────────────────────────────────
 const showMintModal = ref(false)
 const mintedItem    = ref(null)
 
@@ -345,7 +487,10 @@ const claimDrop = async (drop) => {
     await loadMarketCollections()
     ElMessage.success('上链成功，已收藏')
   } catch (error) {
-    ElMessage.error(error?.message || '上链失败，请稍后重试')
+    // 后端业务错误已由 request 拦截器统一弹出，此处不重复提示
+    if (!error?.__handled) {
+      ElMessage.error(error?.message || '上链失败，请稍后重试')
+    }
   } finally {
     isMinting.value = false
   }
@@ -384,7 +529,9 @@ const mintFromQuiz = async () => {
     await loadMarketCollections()
     ElMessage.success('上链成功，藏品已铸造')
   } catch (error) {
-    ElMessage.error(error?.message || '上链失败，请稍后重试')
+    if (!error?.__handled) {
+      ElMessage.error(error?.message || '上链失败，请稍后重试')
+    }
   } finally {
     isMinting.value = false
   }
@@ -415,17 +562,25 @@ const scrollTo = (id) => {
 
 watch(() => authStore.currentUser?.userId, () => {
   loadMyCollections()
+  loadPerfectTopics()
 }, { immediate: true })
 
 // ── 初始化：检查从 Quiz 跳转带参 ────────────────────────────
 onMounted(async () => {
   await loadMarketCollections()
+  await loadPerfectTopics()
   const score = parseInt(route.query.score)
   if (!isNaN(score) && score >= 60) {
     quizScore.value = score
     showQuizReward.value = true
     router.replace({ path: '/digital-collection' })
   }
+  // 启动倒计时定时器（每秒刷新）
+  countdownTimer = setInterval(() => { now.value = Date.now() }, 1000)
+})
+
+onUnmounted(() => {
+  if (countdownTimer) clearInterval(countdownTimer)
 })
 </script>
 
@@ -643,114 +798,7 @@ $rarity-colors: (
 }
 
 // ═══════════════════════════════════════════
-// 获取途径
-// ═══════════════════════════════════════════
-.dc-how {
-  padding: 60px 0 40px;
-}
-
-.dc-how-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  margin-top: 24px;
-}
-
-.dc-how-card {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 16px;
-  padding: 28px 24px;
-  display: flex;
-  gap: 20px;
-  cursor: pointer;
-  transition: background 0.2s, border-color 0.2s;
-  position: relative;
-
-  &:hover {
-    background: rgba(255,255,255,0.07);
-    border-color: rgba(255,255,255,0.18);
-
-    .dc-how-arrow { opacity: 1; }
-  }
-}
-
-.dc-how-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  font-size: 1.6rem;
-
-  svg { width: 36px; height: 36px; }
-
-  &.quiz-icon { color: #e67e22; background: rgba(230,126,34,0.12); }
-  &.drop-icon { color: #7c3aed; background: rgba(124,58,237,0.12); }
-}
-
-.dc-how-body {
-  flex: 1;
-  min-width: 0;
-
-  h3 {
-    font-size: 1.05rem;
-    font-weight: 600;
-    color: #f0ece4;
-    margin: 6px 0 8px;
-  }
-
-  p {
-    font-size: 0.82rem;
-    color: rgba(255,255,255,0.45);
-    line-height: 1.6;
-    margin: 0 0 12px;
-  }
-}
-
-.dc-how-badge {
-  display: inline-block;
-  font-size: 0.7rem;
-  padding: 2px 10px;
-  border-radius: 999px;
-  font-weight: 600;
-
-  &.quiz-badge { background: rgba(230,126,34,0.15); color: #e67e22; }
-  &.drop-badge { background: rgba(124,58,237,0.15); color: #9b59b6; }
-}
-
-.dc-how-rewards {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.reward-tag {
-  font-size: 0.7rem;
-  padding: 2px 10px;
-  border-radius: 999px;
-  font-weight: 600;
-
-  &.common    { background: rgba(156,163,175,0.15); color: #9ca3af; }
-  &.rare      { background: rgba(37,99,235,0.15);   color: #60a5fa; }
-  &.epic      { background: rgba(124,58,237,0.15);  color: #a78bfa; }
-  &.legendary { background: rgba(217,119,6,0.15);   color: #fbbf24; }
-}
-
-.dc-how-arrow {
-  position: absolute;
-  bottom: 20px;
-  right: 20px;
-  font-size: 0.8rem;
-  color: rgba(255,255,255,0.3);
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-// ═══════════════════════════════════════════
-// 首发市场
+// 藏品领取
 // ═══════════════════════════════════════════
 .dc-market {
   padding: 20px 0 50px;
@@ -768,6 +816,7 @@ $rarity-colors: (
   border-radius: 14px;
   overflow: hidden;
   transition: transform 0.25s, border-color 0.25s;
+  cursor: pointer;
 
   &:hover { transform: translateY(-4px); }
 
@@ -830,6 +879,36 @@ $rarity-colors: (
     padding: 6px 20px;
     border-radius: 999px;
   }
+}
+
+.drop-lock-mask {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(3px);
+}
+
+.lock-mask-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.lock-icon {
+  font-size: 1.6rem;
+}
+
+.lock-hint {
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.7);
+  background: rgba(0,0,0,0.5);
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.2);
 }
 
 .drop-body {
@@ -928,6 +1007,14 @@ $rarity-colors: (
     &:hover { background: rgba(255,255,255,0.18); }
   }
 
+  &.lock-btn {
+    background: rgba(255,255,255,0.07);
+    color: rgba(255,255,255,0.5);
+    border: 1px solid rgba(255,255,255,0.15);
+    font-size: 0.78rem;
+    &:hover { background: rgba(255,180,0,0.15); color: #fcd34d; border-color: rgba(255,180,0,0.4); }
+  }
+
   &.claim-btn {
     color: #fff;
     &.common    { background: #4b5563; }
@@ -1001,6 +1088,7 @@ $rarity-colors: (
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.08);
   transition: transform 0.2s;
+  cursor: pointer;
 
   &:hover { transform: translateY(-3px); }
 
@@ -1031,13 +1119,12 @@ $rarity-colors: (
 }
 
 .mine-rarity-tag {
-  position: absolute;
-  bottom: 8px;
-  left: 8px;
+  display: inline-block;
   font-size: 0.65rem;
   font-weight: 700;
   padding: 2px 8px;
   border-radius: 999px;
+  margin-bottom: 4px;
 
   &.common    { background: rgba(50,50,50,0.8);  color: #d1d5db; }
   &.rare      { background: rgba(30,58,138,0.8); color: #93c5fd; }
@@ -1108,6 +1195,224 @@ $rarity-colors: (
   a:hover {
     text-decoration: underline;
   }
+}
+
+// ═══════════════════════════════════════════
+// 藏品详情弹窗
+// ═══════════════════════════════════════════
+.dc-detail-modal {
+  position: relative;
+  width: min(760px, calc(100vw - 32px));
+  max-height: calc(100vh - 60px);
+  background: #1a1422;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 30px 80px rgba(0,0,0,0.7);
+  overflow-y: auto;
+
+  &.legendary { border-color: rgba(217,119,6,0.4); }
+  &.epic      { border-color: rgba(124,58,237,0.3); }
+  &.rare      { border-color: rgba(37,99,235,0.3); }
+}
+
+.detail-bg-glow {
+  position: absolute;
+  top: -80px;
+  right: -60px;
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  filter: blur(70px);
+  pointer-events: none;
+
+  &.legendary { background: radial-gradient(rgba(217,119,6,0.35), transparent 70%); }
+  &.epic      { background: radial-gradient(rgba(124,58,237,0.35), transparent 70%); }
+  &.rare      { background: radial-gradient(rgba(37,99,235,0.35), transparent 70%); }
+  &.common    { background: radial-gradient(rgba(100,100,100,0.2), transparent 70%); }
+}
+
+.detail-close-btn {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  background: rgba(255,255,255,0.08);
+  border: none;
+  color: rgba(255,255,255,0.5);
+  font-size: 1.4rem;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  line-height: 1;
+  padding: 0;
+  transition: all 0.2s;
+
+  &:hover { background: rgba(255,255,255,0.15); color: #fff; }
+}
+
+.detail-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 28px;
+  padding: 28px;
+
+  @media (max-width: 600px) {
+    flex-direction: column;
+  }
+}
+
+.detail-img-wrap {
+  position: relative;
+  flex-shrink: 0;
+  width: 240px;
+  height: 300px;
+  border-radius: 14px;
+  overflow: visible;
+
+  @media (max-width: 600px) {
+    width: 100%;
+    height: 220px;
+  }
+}
+
+.detail-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.12);
+}
+
+.detail-img-glow {
+  position: absolute;
+  inset: -12px;
+  border-radius: 20px;
+  filter: blur(20px);
+  z-index: -1;
+  opacity: 0.6;
+
+  &.legendary { background: rgba(217,119,6,0.5); }
+  &.epic      { background: rgba(124,58,237,0.5); }
+  &.rare      { background: rgba(37,99,235,0.5); }
+  &.common    { background: rgba(100,100,100,0.3); }
+}
+
+.detail-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.detail-rarity {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 14px;
+  border-radius: 999px;
+  width: fit-content;
+
+  &.common    { background: rgba(156,163,175,0.15); color: #9ca3af; }
+  &.rare      { background: rgba(37,99,235,0.15);   color: #60a5fa; }
+  &.epic      { background: rgba(124,58,237,0.15);  color: #c4b5fd; }
+  &.legendary { background: rgba(217,119,6,0.2);    color: #fcd34d; }
+}
+
+.detail-name {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #f5f0e8;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.detail-serial {
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.25);
+  font-family: monospace;
+}
+
+.detail-attrs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 10px;
+  padding: 14px;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.detail-attr-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.detail-attr-label {
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.35);
+  flex-shrink: 0;
+}
+
+.detail-attr-val {
+  font-size: 0.82rem;
+  color: rgba(255,255,255,0.75);
+  font-weight: 500;
+  text-align: right;
+}
+
+.detail-description {
+  background: rgba(255,255,255,0.03);
+  border-radius: 10px;
+  padding: 14px;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.detail-desc-label {
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.35);
+  margin-bottom: 8px;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+.detail-desc-text {
+  font-size: 0.85rem;
+  color: rgba(255,255,255,0.6);
+  line-height: 1.8;
+  margin: 0;
+}
+
+.detail-chain {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.detail-chain-tag {
+  font-size: 0.75rem;
+  color: #22c55e;
+  background: rgba(34,197,94,0.1);
+  border: 1px solid rgba(34,197,94,0.25);
+  border-radius: 999px;
+  padding: 2px 10px;
+}
+
+.detail-chain a {
+  font-size: 0.78rem;
+  color: #93c5fd;
+  text-decoration: none;
+
+  &:hover { text-decoration: underline; }
 }
 
 // ═══════════════════════════════════════════
@@ -1337,7 +1642,6 @@ $rarity-colors: (
   .dc-banner-right { display: none; }
   .dc-banner-title { font-size: 2.2rem; }
 
-  .dc-how-grid    { grid-template-columns: 1fr; }
   .dc-drops-grid  { grid-template-columns: repeat(2, 1fr); }
   .dc-mine-grid   { grid-template-columns: repeat(2, 1fr); }
 }

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <transition name="fade-screen">
     <div v-if="visible" class="splash-screen">
       <!-- 动态背景：水墨晕染效果 -->

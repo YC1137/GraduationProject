@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="china-map-widget">
     <!-- 地图画布 -->
     <div ref="mapRef" class="map-canvas"></div>
@@ -248,11 +248,16 @@ onUnmounted(() => {
 <style scoped lang="scss">
 .china-map-widget {
   width: 100%;
+  overflow: hidden;
 }
 
 .map-canvas {
   width: 100%;
-  height: 340px;
+  height: 540px;
+
+  @media (max-width: 768px) {
+    height: 280px;
+  }
 }
 
 .region-select-row {

@@ -12,7 +12,6 @@ public class MintDigitalAssetRequest {
     @NotNull(message = "藏品ID不能为空")
     private Long itemId;
 
-    @NotBlank(message = "藏品名称不能为空")
     private String name;
 
     private String serial;
@@ -29,6 +28,5 @@ public class MintDigitalAssetRequest {
 
     private String ownedAt;
 
-    @NotBlank(message = "tokenURI不能为空")
     private String tokenUri;
 }
