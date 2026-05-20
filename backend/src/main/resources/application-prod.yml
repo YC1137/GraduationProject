@@ -6,7 +6,7 @@ spring:
     # 服务器上的MySQL地址
     url: jdbc:mysql://localhost:3306/heritage_platform?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
     username: root
-    password: 123456curl -s -X POST https://cloudflare-eth.com -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'
+    password: 123456
 
     driver-class-name: com.mysql.cj.jdbc.Driver
 
@@ -27,14 +27,4 @@ blockchain:
   gas-price: 3000000000
   gas-limit: 600000
   http-timeout-seconds: 30
-  platform-private-key: "0xffcdecdded7b291d264d056066515363a780d3baa1e65f5643bb87bd1dee56d8"
-
-# 区块链配置
-blockchain:
-  rpc-url: https://ethereum-sepolia-rpc.publicnode.com
-  contract-address: "0xcf2B554b77d6E6696266BFd8b3919eD58B21991f"
-  chain-id: 11155111
-  gas-price: 3000000000
-  gas-limit: 600000
-  http-timeout-seconds: 30
-  platform-private-key: "0xffcdecdded7b291d264d056066515363a780d3baa1e65f5643bb87bd1dee56d8"
+  platform-private-key: "YOUR_PRIVATE_KEY_HERE"
